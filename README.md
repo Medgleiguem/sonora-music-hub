@@ -57,8 +57,12 @@ Open `http://localhost:3000`.
 - `DOWNLOADER_API_KEY`: exactly the same secret used on Vercel.
 - `ALLOWED_ORIGINS`: exact comma-separated Vercel/custom-domain origins, for example `https://sonora.example.com,https://sonora.vercel.app`.
 - `YT_DLP_PATH=yt-dlp`: already supplied by `render.yaml`.
+- `YT_DLP_PROXY`: optional trusted proxy URL used only by the server-side yt-dlp process.
+- `YT_DLP_COOKIES_PATH`: optional path to a private Netscape-format cookies file, such as `/etc/secrets/youtube-cookies.txt` on Render.
 
 Never prefix private keys with `NEXT_PUBLIC_`. Never commit `.env` files.
+
+Some hosting-provider IP ranges are challenged by YouTube even when yt-dlp is fully up to date. For a personal production deployment, prefer a reputable static residential proxy. A dedicated throwaway YouTube account exported to a Render secret file is a fallback, but YouTube can invalidate or restrict that account.
 
 ## Production deployment
 

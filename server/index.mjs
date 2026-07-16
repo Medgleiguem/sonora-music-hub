@@ -12,11 +12,17 @@ const host = process.env.DOWNLOADER_HOST || '0.0.0.0';
 const ytDlp = process.env.YT_DLP_PATH || 'yt-dlp';
 const apiKey = process.env.DOWNLOADER_API_KEY?.trim() || '';
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000').split(',').map((item) => item.trim()).filter(Boolean);
+const proxy = process.env.YT_DLP_PROXY?.trim() || '';
+const cookiesPath = process.env.YT_DLP_COOKIES_PATH?.trim() || '';
 const allowedHosts = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be']);
 const formats = { mp3: 'audio/mpeg', m4a: 'audio/mp4', opus: 'audio/opus' };
 const maxUrlLength = 2048;
 const maxConcurrent = 2;
-const ytDlpBaseArgs = ['--js-runtimes', 'node'];
+const ytDlpBaseArgs = [
+  '--js-runtimes', 'node',
+  ...(proxy ? ['--proxy', proxy] : []),
+  ...(cookiesPath ? ['--cookies', cookiesPath] : [])
+];
 let activeDownloads = 0;
 
 const send = (response, status, body, type = 'text/plain') => {
@@ -64,6 +70,17 @@ const run = (args, cwd) => new Promise((resolve, reject) => {
   child.on('close', (code) => code === 0 ? resolve(stdout.trim()) : reject(new Error(stderr.trim() || `yt-dlp exited with ${code}`)));
 });
 
+const downloaderError = (error) => {
+  const message = error.code === 'ENOENT' ? 'yt-dlp is not installed or is not on PATH.' : error.message;
+  if (/sign in to confirm you.re not a bot/i.test(message)) {
+    return {
+      status: 503,
+      message: 'YouTube is blocking this downloader server. Configure a trusted proxy or private YouTube cookies and try again.'
+    };
+  }
+  return { status: 502, message: message.slice(0, 500) };
+};
+
 const server = createServer(async (request, response) => {
   const requestUrl = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
   allowCors(request, response);
@@ -90,7 +107,8 @@ const server = createServer(async (request, response) => {
       }));
       return send(response, 200, JSON.stringify({ results }), 'application/json');
     } catch (error) {
-      return send(response, 502, error.message.slice(0, 500));
+      const failure = downloaderError(error);
+      return send(response, failure.status, failure.message);
     }
   }
   if (requestUrl.pathname !== '/api/youtube/download') return send(response, 404, 'Not found');
@@ -121,8 +139,8 @@ const server = createServer(async (request, response) => {
       stream.pipe(response);
     });
   } catch (error) {
-    const message = error.code === 'ENOENT' ? 'yt-dlp is not installed or is not on PATH.' : error.message;
-    send(response, 502, message.slice(0, 500));
+    const failure = downloaderError(error);
+    send(response, failure.status, failure.message);
   } finally {
     activeDownloads -= 1;
     if (directory) await rm(directory, { recursive: true, force: true }).catch(() => {});

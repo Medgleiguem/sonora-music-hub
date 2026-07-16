@@ -26,11 +26,15 @@ No database is needed for music. Songs remain on each user's device.
 3. Enter:
    - `DOWNLOADER_API_KEY`: the shared secret.
    - `ALLOWED_ORIGINS`: the expected production app origin. It can be corrected after Vercel assigns the final URL.
+   - `YT_DLP_PROXY`: optional trusted proxy URL if YouTube challenges Render's outbound IP.
+   - `YT_DLP_COOKIES_PATH`: optional `/etc/secrets/youtube-cookies.txt` when using a Render secret file instead.
 4. Use at least the Starter/always-on plan for dependable downloads.
 5. Wait for `/health` to return JSON with `"ok": true`.
 6. Copy the worker URL, such as `https://sonora-downloader.onrender.com`.
 
 The worker does not need a persistent disk. It deletes temporary media after streaming it.
+
+If downloads report that YouTube is blocking the server, configure either `YT_DLP_PROXY` or a `youtube-cookies.txt` Render secret file. Never commit proxy credentials or YouTube cookies to Git.
 
 ## 2. Deploy the Vercel app
 
