@@ -18,6 +18,10 @@ const allowedHosts = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com',
 const formats = { mp3: 'audio/mpeg', m4a: 'audio/mp4', opus: 'audio/opus' };
 const maxUrlLength = 2048;
 const maxConcurrent = 2;
+const configuredPlaylistLimit = Number(process.env.PLAYLIST_MAX_ITEMS || 100);
+const maxPlaylistItems = Number.isFinite(configuredPlaylistLimit)
+  ? Math.min(Math.max(Math.floor(configuredPlaylistLimit), 1), 250)
+  : 100;
 const ytDlpBaseArgs = [
   '--js-runtimes', 'node',
   ...(proxy ? ['--proxy', proxy] : []),
@@ -106,6 +110,38 @@ const server = createServer(async (request, response) => {
         source: 'youtube'
       }));
       return send(response, 200, JSON.stringify({ results }), 'application/json');
+    } catch (error) {
+      const failure = downloaderError(error);
+      return send(response, failure.status, failure.message);
+    }
+  }
+  if (requestUrl.pathname === '/api/youtube/playlist') {
+    if (!authorizeBearer(request)) return send(response, 401, 'Unauthorized');
+    const source = requestUrl.searchParams.get('url') || '';
+    if (source.length > maxUrlLength) return send(response, 400, 'The URL is too long.');
+    if (!isYoutubeUrl(source)) return send(response, 400, 'Only valid YouTube playlist URLs are supported.');
+    try {
+      const payload = await run([
+        source,
+        '--flat-playlist',
+        '--playlist-end', String(maxPlaylistItems),
+        '--dump-single-json',
+        '--skip-download',
+        '--no-warnings'
+      ], process.cwd());
+      const data = JSON.parse(payload);
+      const entries = (data.entries || []).filter((entry) => entry?.id).map((entry) => ({
+        externalId: entry.id,
+        title: entry.title || 'Untitled video',
+        artist: entry.channel || entry.uploader || 'YouTube',
+        album: data.title || 'YouTube playlist',
+        duration: Number(entry.duration) || 0,
+        cover: entry.thumbnail || `https://i.ytimg.com/vi/${entry.id}/hqdefault.jpg`,
+        shareUrl: entry.webpage_url || `https://www.youtube.com/watch?v=${entry.id}`,
+        source: 'youtube'
+      }));
+      if (!entries.length) return send(response, 404, 'This playlist has no downloadable videos.');
+      return send(response, 200, JSON.stringify({ title: data.title || 'YouTube playlist', entries, limited: (data.playlist_count || entries.length) > entries.length }), 'application/json');
     } catch (error) {
       const failure = downloaderError(error);
       return send(response, failure.status, failure.message);

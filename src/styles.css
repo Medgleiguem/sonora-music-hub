@@ -258,6 +258,22 @@ input[type='range']:hover::-webkit-slider-thumb { opacity: 1; }
 .download-intro.selected-track .cover { width: 48px; height: 48px; border-radius: 9px; }
 .download-intro > div { min-width: 0; }
 .download-intro > div strong, .download-intro > div p { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.playlist-hint { margin: 9px 0 -3px; color: #c5e878; font-size: 10px; line-height: 1.45; display: flex; align-items: flex-start; gap: 6px; }
+.playlist-hint svg { flex: 0 0 auto; margin-top: 1px; }
+.download-progress-card { margin: 16px 0; padding: 13px; border: 1px solid rgba(184,243,74,.18); border-radius: 11px; background: rgba(184,243,74,.045); }
+.download-progress-card.partial, .download-progress-card.error, .download-progress-card.cancelled { border-color: rgba(255,139,141,.3); background: rgba(255,139,141,.055); }
+.download-progress-card.complete { border-color: rgba(184,243,74,.3); }
+.download-progress-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; }
+.download-progress-head span { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.download-progress-head strong { color: var(--accent); font-size: 10px; white-space: nowrap; }
+.download-progress-card.partial .download-progress-head strong, .download-progress-card.error .download-progress-head strong, .download-progress-card.cancelled .download-progress-head strong { color: #ff9da0; }
+.download-progress-track { position: relative; height: 6px; margin: 11px 0 8px; overflow: hidden; border-radius: 99px; background: #323237; }
+.download-progress-track > span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width .2s ease; }
+.download-progress-track.indeterminate > span { width: 38% !important; animation: downloadSlide 1.15s ease-in-out infinite; }
+.download-progress-card.partial .download-progress-track > span, .download-progress-card.error .download-progress-track > span, .download-progress-card.cancelled .download-progress-track > span { background: #ff8b8d; }
+.download-progress-card p { margin: 0; color: #b6b6bd; font-size: 10px; line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.download-progress-card .download-errors { margin-top: 7px; color: #ffadaf; white-space: normal; }
+@keyframes downloadSlide { 0% { transform: translateX(-115%); } 100% { transform: translateX(365%); } }
 .select-input { appearance: none; }
 .consent-check { display: flex; align-items: flex-start; gap: 9px; margin: 18px 0; color: var(--muted); font-size: 10px; line-height: 1.45; cursor: pointer; }
 .consent-check input { margin: 1px 0 0; accent-color: var(--accent); }
@@ -343,20 +359,20 @@ input[type='range']:hover::-webkit-slider-thumb { opacity: 1; }
   .sidebar { position: fixed; inset: 0 auto 0 0; width: min(300px,85vw); transform: translateX(-105%); transition: .25s ease; box-shadow: 20px 0 50px rgba(0,0,0,.5); }
   .sidebar.mobile-open { transform: translateX(0); }
   .mobile-close, .menu-button { display: inline-grid; }
-  .main-content { height: 100vh; padding-bottom: calc(var(--player-height) + 58px); }
+  .main-content { height: 100dvh; padding-bottom: calc(var(--player-height) + 59px + env(safe-area-inset-bottom)); }
   .topbar { height: 68px; padding: 13px 18px; }
-  .page-scroll { height: calc(100vh - 68px - var(--player-height) - 58px); }
+  .page-scroll { height: calc(100dvh - 68px - var(--player-height) - 59px - env(safe-area-inset-bottom)); overscroll-behavior: contain; }
   .page { padding: 25px 20px 55px; }
-  .player-bar { left: 0; bottom: 58px; height: var(--player-height); grid-template-columns: 1fr auto; padding: 8px 15px; }
+  .player-bar { left: 0; bottom: calc(59px + env(safe-area-inset-bottom)); height: var(--player-height); grid-template-columns: 1fr auto; padding: 8px 15px; }
   .now-playing .favorite, .player-right, .player-center .progress-row, .player-controls > button:first-child, .player-controls > button:nth-last-child(1) { display: none; }
   .player-center { display: block; }
   .player-controls { gap: 1px; }
   .main-play { width: 38px; height: 38px; }
-.mobile-nav { position: fixed; z-index: 55; bottom: 0; left: 0; right: 0; height: 59px; border-top: 1px solid var(--border); background: #101012; display: grid; grid-template-columns: repeat(4,1fr); padding-bottom: env(safe-area-inset-bottom); }
+  .mobile-nav { position: fixed; z-index: 55; bottom: 0; left: 0; right: 0; height: calc(59px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: #101012; display: grid; grid-template-columns: repeat(4,1fr); padding-bottom: env(safe-area-inset-bottom); }
   .mobile-nav button { border: 0; background: none; color: #77777f; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 9px; }
   .mobile-nav button.active { color: var(--accent); }
-  .toast { bottom: calc(var(--player-height) + 72px); }
-  .queue-drawer { bottom: calc(var(--player-height) + 58px); width: min(380px,100%); }
+  .toast { bottom: calc(var(--player-height) + 72px + env(safe-area-inset-bottom)); }
+  .queue-drawer { bottom: calc(var(--player-height) + 59px + env(safe-area-inset-bottom)); width: min(380px,100%); }
   .onboarding-card { grid-template-columns: 1fr; }
   .vinyl-scene { min-height: 280px; }
   .onboarding-copy { padding-bottom: 10px; }
@@ -372,7 +388,13 @@ input[type='range']:hover::-webkit-slider-thumb { opacity: 1; }
 }
 
 @media (max-width: 620px) {
-  .youtube-dock { right: 12px; bottom: calc(var(--player-height) + 70px); width: min(380px,calc(100vw - 24px)); }
+  button, input, select { touch-action: manipulation; }
+  input, select { font-size: 16px; }
+  .topbar { gap: 9px; padding: 12px; }
+  .menu-button { width: 42px; height: 42px; flex: 0 0 auto; }
+  .search-box { height: 42px; padding: 0 10px; }
+  .search-box input { font-size: 16px; }
+  .youtube-dock { right: 12px; bottom: calc(var(--player-height) + 70px + env(safe-area-inset-bottom)); width: min(380px,calc(100vw - 24px)); }
   .youtube-frame { height: max(200px,calc((100vw - 24px) * .5625)); max-height: 214px; }
   .hide-mobile, .search-box kbd, .upload-label { display: none; }
   .topbar .primary-button { width: 42px; height: 42px; padding: 0; }
@@ -401,7 +423,17 @@ input[type='range']:hover::-webkit-slider-thumb { opacity: 1; }
   .track-row .favorite { display: grid; }
   .now-playing .cover { width: 45px; height: 45px; }
   .player-bar { padding-left: 10px; }
-  .modal { padding: 25px 20px; }
+  .modal-backdrop { place-items: end center; padding: 0; }
+  .modal { width: 100%; max-height: min(88dvh, 760px); overflow-y: auto; padding: 24px 20px calc(24px + env(safe-area-inset-bottom)); border-radius: 19px 19px 0 0; }
+  .modal-wide { width: 100%; }
+  .modal-heading h2 { font-size: 23px; }
+  .modal-heading p { font-size: 11px; line-height: 1.45; }
+  .modal-close { width: 40px; height: 40px; top: 11px; right: 11px; }
+  .download-intro { padding: 11px; }
+  .download-progress-card { margin: 14px 0; }
+  .download-progress-card p { white-space: normal; }
+  .consent-check { font-size: 11px; }
+  .full-button { min-height: 46px; }
   .card-download span { display: none; }
   .card-download { width: 34px; padding: 0; justify-content: center; }
   .drop-zone { min-height: 205px; }

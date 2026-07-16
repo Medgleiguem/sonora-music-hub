@@ -1,6 +1,6 @@
 # Sonora
 
-Sonora is a mobile-first, local-first music PWA built with Next.js. It can search YouTube, convert authorized videos to MP3/M4A/Opus through a private worker, save the result on the current device, import local audio and folders, build playlists, and play downloaded music offline.
+Sonora is a mobile-first, local-first music PWA built with Next.js. It can search YouTube, convert authorized videos or playlists to MP3/M4A/Opus through a private worker, save the result on the current device, import local audio and folders, build playlists, and play downloaded music offline.
 
 ## Architecture
 
@@ -59,6 +59,7 @@ Open `http://localhost:3000`.
 - `YT_DLP_PATH=yt-dlp`: already supplied by `render.yaml`.
 - `YT_DLP_PROXY`: optional trusted proxy URL used only by the server-side yt-dlp process.
 - `YT_DLP_COOKIES_PATH`: optional path to a private Netscape-format cookies file, such as `/etc/secrets/youtube-cookies.txt` on Render.
+- `PLAYLIST_MAX_ITEMS=100`: optional maximum number of tracks Sonora reads from a pasted YouTube playlist (1–250). Playlist tracks are converted sequentially so completed tracks remain saved if one conversion fails or the user cancels.
 
 Never prefix private keys with `NEXT_PUBLIC_`. Never commit `.env` files.
 
@@ -96,7 +97,7 @@ For the safest phone setup:
 - Download requests use five-minute HMAC-signed URLs.
 - Worker CORS is restricted to configured app origins.
 - Only recognized YouTube hosts and MP3/M4A/Opus output formats are accepted.
-- Downloads are limited to 200 MB and two simultaneous conversions per worker instance.
+- Individual downloads are limited to 200 MB, playlists are capped at `PLAYLIST_MAX_ITEMS`, and two simultaneous conversions run per worker instance.
 - Temporary conversion files are deleted after the response closes.
 
 Use the downloader only for content you own or have permission to save, and comply with applicable terms and laws.

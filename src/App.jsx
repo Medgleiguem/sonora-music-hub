@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import 'jsmediatags/dist/jsmediatags.min.js';
 import YouTube from 'react-youtube';
 import {
-  ArrowLeft, Check, ChevronRight, Clock3, Cloud, Compass, Disc3, Download,
+  AlertCircle, ArrowLeft, Check, ChevronRight, Clock3, Cloud, Compass, Disc3, Download,
   DownloadCloud, FolderUp, HardDrive, Headphones, Heart, Home, Library,
   ListMusic, ListPlus, LoaderCircle, Menu, MoreHorizontal, Music2, Pause,
   Play, Plus, Radio, Repeat2, Search, Settings, Shuffle, SkipBack,
@@ -83,6 +83,35 @@ const isYoutubeUrl = (value = '') => {
     return ['http:', 'https:'].includes(parsed.protocol) && YOUTUBE_HOSTS.has(parsed.hostname.toLowerCase());
   } catch {
     return false;
+  }
+};
+
+const isYoutubePlaylistUrl = (value = '') => {
+  try {
+    const parsed = new URL(value);
+    return isYoutubeUrl(value) && (parsed.pathname === '/playlist' || parsed.searchParams.has('list'));
+  } catch {
+    return false;
+  }
+};
+
+const getYoutubeVideoId = (value = '') => {
+  try {
+    const parsed = new URL(value);
+    if (parsed.hostname === 'youtu.be') return parsed.pathname.split('/').filter(Boolean)[0] || '';
+    if (parsed.pathname === '/watch') return parsed.searchParams.get('v') || '';
+    const parts = parsed.pathname.split('/').filter(Boolean);
+    return ['shorts', 'embed', 'live'].includes(parts[0]) ? parts[1] || '' : '';
+  } catch {
+    return '';
+  }
+};
+
+const cleanYoutubeTitle = (value = '') => {
+  try {
+    return decodeEntities(decodeURIComponent(value)).replace(/[\\/:*?"<>|]+/g, '').trim() || 'YouTube audio';
+  } catch {
+    return decodeEntities(value).replace(/[\\/:*?"<>|]+/g, '').trim() || 'YouTube audio';
   }
 };
 
@@ -246,27 +275,51 @@ function UploadModal({ onClose, onFiles, onFolder, importing }) {
   );
 }
 
-function YoutubeDownloadModal({ onClose, onDownload, downloading, track }) {
+function YoutubeDownloadModal({ onClose, onDownload, onCancel, task, track }) {
   const [url, setUrl] = useState(track?.shareUrl || '');
   const [format, setFormat] = useState('mp3');
   const [confirmed, setConfirmed] = useState(false);
   const [addAfterDownload, setAddAfterDownload] = useState(Boolean(track));
   const [keepBackup, setKeepBackup] = useState(true);
+  const downloading = Boolean(task?.active);
+  const playlistUrl = isYoutubePlaylistUrl(url.trim());
   const canSubmit = isYoutubeUrl(url.trim()) && confirmed && !downloading;
+  const total = task?.total || 1;
+  const itemProgress = task?.transferTotal ? task.transferLoaded / task.transferTotal : 0;
+  const percent = Math.max(0, Math.min(100, Math.round(((task?.completed || 0) + itemProgress) / total * 100)));
+  const indeterminate = downloading && !task?.transferTotal;
+  const stageLabel = {
+    preparing: 'Reading the playlist…',
+    converting: 'Converting audio…',
+    receiving: 'Saving audio from the converter…',
+    storing: 'Adding this track to your device…',
+    cancelling: 'Cancelling download…',
+    complete: 'Download complete',
+    partial: 'Finished with a few problems',
+    cancelled: 'Download cancelled',
+    error: 'Download could not start'
+  }[task?.stage] || '';
   return (
-    <Modal title="Download audio" subtitle="Save audio you own or have permission to download for offline listening." onClose={onClose} wide>
+    <Modal title="Download audio" subtitle="Save audio you own or have permission to download for offline listening." onClose={downloading ? onCancel : onClose} wide>
       <div className={`download-intro ${track ? 'selected-track' : ''}`}>
         {track ? <Cover track={track} size="small" /> : <span className="download-orb"><Download size={23} /></span>}
         <div><strong>{track?.title || 'YouTube to audio'}</strong><p>{track ? `${track.artist || 'YouTube'} · Ready to convert and store on this device.` : 'Paste a video URL. The converted file is stored only in this browser on this device.'}</p></div>
       </div>
-      <label className="field-label" htmlFor="youtube-download-url">YouTube URL</label>
-      <input id="youtube-download-url" className="text-input" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://www.youtube.com/watch?v=…" inputMode="url" autoFocus />
+      <label className="field-label" htmlFor="youtube-download-url">YouTube video or playlist URL</label>
+      <input id="youtube-download-url" className="text-input" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://www.youtube.com/playlist?list=…" inputMode="url" autoFocus disabled={downloading} />
+      {playlistUrl && <p className="playlist-hint"><ListMusic size={15} />Playlist detected. Tracks download one at a time and will be added to a Sonora playlist.</p>}
       <label className="field-label" htmlFor="youtube-download-format">Audio format</label>
-      <select id="youtube-download-format" className="text-input select-input" value={format} onChange={(event) => setFormat(event.target.value)}><option value="mp3">MP3 · widest compatibility</option><option value="m4a">M4A · efficient quality</option><option value="opus">Opus · smallest file</option></select>
-      <label className="consent-check"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} /><span>I have the right to download this content and will use it in accordance with YouTube’s terms.</span></label>
-      {track && <label className="consent-check playlist-after-download"><input type="checkbox" checked={addAfterDownload} onChange={(event) => setAddAfterDownload(event.target.checked)} /><span>Choose a playlist after the download finishes.</span></label>}
-      <label className="consent-check playlist-after-download"><input type="checkbox" checked={keepBackup} onChange={(event) => setKeepBackup(event.target.checked)} /><span>Also keep a recovery copy in Downloads/Files.</span></label>
-      <button className="primary-button full-button" disabled={!canSubmit} onClick={() => onDownload({ url: url.trim(), format, track, addAfterDownload, keepBackup })}>{downloading ? <><LoaderCircle className="spin" size={17} />Converting audio…</> : <><Download size={17} />Convert and save to device</>}</button>
+      <select id="youtube-download-format" className="text-input select-input" value={format} onChange={(event) => setFormat(event.target.value)} disabled={downloading}><option value="mp3">MP3 · widest compatibility</option><option value="m4a">M4A · efficient quality</option><option value="opus">Opus · smallest file</option></select>
+      <label className="consent-check"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} disabled={downloading} /><span>I have the right to download this content and will use it in accordance with YouTube’s terms.</span></label>
+      {track && !playlistUrl && <label className="consent-check playlist-after-download"><input type="checkbox" checked={addAfterDownload} onChange={(event) => setAddAfterDownload(event.target.checked)} disabled={downloading} /><span>Choose a playlist after the download finishes.</span></label>}
+      <label className="consent-check playlist-after-download"><input type="checkbox" checked={keepBackup} onChange={(event) => setKeepBackup(event.target.checked)} disabled={downloading} /><span>Also keep a recovery copy in Downloads/Files{playlistUrl ? ' for each track' : ''}.</span></label>
+      {task && <section className={`download-progress-card ${task.stage}`} aria-live="polite">
+        <div className="download-progress-head"><span>{downloading && <LoaderCircle className="spin" size={16} />}{!downloading && (task.stage === 'partial' || task.stage === 'error') && <AlertCircle size={16} />}{!downloading && task.stage === 'complete' && <Check size={16} />}{stageLabel}</span><strong>{task.total ? `${task.completed || 0}/${task.total}` : ''}</strong></div>
+        <div className={`download-progress-track ${indeterminate ? 'indeterminate' : ''}`}><span style={{ width: `${percent}%` }} /></div>
+        <p>{task.currentTitle || task.message || (task.total ? `${task.completed || 0} tracks saved to this device.` : 'Preparing your download…')}</p>
+        {task.failed?.length > 0 && <p className="download-errors">{task.failed.length} {task.failed.length === 1 ? 'track was' : 'tracks were'} skipped. You can try again; already saved tracks will not be downloaded twice.</p>}
+      </section>}
+      {downloading ? <button className="secondary-button full-button" onClick={onCancel}><X size={17} />Cancel download</button> : <button className="primary-button full-button" disabled={!canSubmit} onClick={() => onDownload({ url: url.trim(), format, track, addAfterDownload, keepBackup })}><Download size={17} />{playlistUrl ? 'Download playlist' : 'Convert and save to device'}</button>}
       <p className="download-footnote">Requires the Sonora download service to be configured. <a href="https://github.com/Tyrrrz/YoutubeDownloader" target="_blank" rel="noreferrer">Inspired by YoutubeDownloader</a>.</p>
     </Modal>
   );
@@ -344,6 +397,7 @@ function App() {
   const fileInputRef = useRef();
   const youtubePlayerRef = useRef(null);
   const searchTimerRef = useRef();
+  const youtubeDownloadAbortRef = useRef(null);
   const [tracks, setTracks] = useState([]);
   const [playlists, setPlaylists] = useState([]);
   const [view, setView] = useState('home');
@@ -370,7 +424,8 @@ function App() {
   const [queueOpen, setQueueOpen] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [toast, setToast] = useState(null);
-  const [youtubeDownloading, setYoutubeDownloading] = useState(false);
+  const [youtubeTask, setYoutubeTask] = useState(null);
+  const youtubeDownloading = Boolean(youtubeTask?.active);
 
   const notify = useCallback((message, type = 'success') => {
     setToast({ message, type });
@@ -394,6 +449,12 @@ function App() {
     });
     refreshStorage();
   }, [refreshStorage]);
+
+  useEffect(() => {
+    if (modal?.type !== 'youtube-download' && !youtubeDownloading) setYoutubeTask(null);
+  }, [modal?.type, youtubeDownloading]);
+
+  useEffect(() => () => youtubeDownloadAbortRef.current?.abort(), []);
 
   const protectDeviceStorage = useCallback(async () => {
     const persisted = await requestPersistentStorage();
@@ -706,43 +767,150 @@ function App() {
     }
   };
 
-  const downloadYoutubeAudio = async ({ url, format, track, addAfterDownload = false, keepBackup = true }) => {
-    const existingDownload = track?.externalId
-      ? tracks.find((item) => item.source === 'youtube-download' && item.externalId === track.externalId && item.fileName?.toLowerCase().endsWith(`.${format}`))
-      : null;
-    if (existingDownload) {
-      if (keepBackup && (existingDownload.blob || existingDownload.cachedBlob)) {
-        saveRecoveryCopy(existingDownload.blob || existingDownload.cachedBlob, existingDownload.fileName || `${existingDownload.title}.${format}`);
-      }
-      notify('This audio format is already saved on your device');
-      if (addAfterDownload) setModal({ type: 'add', track: existingDownload });
-      return;
+  const fetchYoutubeAudio = async (source, format, signal, onProgress) => {
+    const response = await fetch(`/api/youtube/download?url=${encodeURIComponent(source)}&format=${encodeURIComponent(format)}`, { signal });
+    if (!response.ok) {
+      const message = await response.text().catch(() => 'Download service unavailable');
+      throw new Error(message || 'Download service unavailable');
     }
-    await protectDeviceStorage();
-    setYoutubeDownloading(true);
-    try {
-      const response = await fetch(`/api/youtube/download?url=${encodeURIComponent(url)}&format=${encodeURIComponent(format)}`);
-      if (!response.ok) {
-        const message = await response.text().catch(() => 'Download service unavailable');
-        throw new Error(message || 'Download service unavailable');
-      }
+    const total = Number(response.headers.get('Content-Length')) || 0;
+    const reader = response.body?.getReader();
+    if (!reader) {
       const blob = await response.blob();
-      if (!blob.size) throw new Error('The download service returned an empty file.');
-      const rawTitle = response.headers.get('X-Track-Title') || 'YouTube audio';
-      const title = decodeEntities(decodeURIComponent(rawTitle)).replace(/[\\/:*?"<>|]+/g, '').trim() || 'YouTube audio';
-      const fileName = `${title}.${format}`;
-      if (keepBackup) saveRecoveryCopy(blob, fileName);
-      const [downloadedTrack] = await importFiles(
-        [new File([blob], fileName, { type: blob.type || audioMimeType(fileName) })],
-        { source: 'youtube-download', metadata: track }
-      );
-      if (downloadedTrack && addAfterDownload) setModal({ type: 'add', track: downloadedTrack });
-    } catch (error) {
-      console.error(error);
-      notify(error.message || 'Could not download this audio.', 'error');
-    } finally {
-      setYoutubeDownloading(false);
+      onProgress(blob.size, blob.size || total);
+      return { blob, title: cleanYoutubeTitle(response.headers.get('X-Track-Title') || 'YouTube audio') };
     }
+    const chunks = [];
+    let loaded = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      loaded += value.byteLength;
+      onProgress(loaded, total);
+    }
+    const blob = new Blob(chunks, { type: response.headers.get('Content-Type') || audioMimeType(`audio.${format}`) });
+    if (!blob.size) throw new Error('The download service returned an empty file.');
+    return { blob, title: cleanYoutubeTitle(response.headers.get('X-Track-Title') || 'YouTube audio') };
+  };
+
+  const storeYoutubeDownload = async (blob, fileName, metadata = {}) => {
+    const track = {
+      id: `local-${crypto.randomUUID()}`,
+      title: metadata.title || fileName.replace(/\.[^.]+$/, '') || 'YouTube audio',
+      artist: metadata.artist || 'YouTube',
+      album: metadata.album || 'YouTube downloads',
+      duration: await readDuration(new File([blob], fileName, { type: blob.type || audioMimeType(fileName) })),
+      cover: metadata.cover || '',
+      blob,
+      fileName,
+      fileType: blob.type || audioMimeType(fileName),
+      source: 'youtube-download',
+      folderName: '',
+      folderPath: '',
+      externalId: metadata.externalId || '',
+      shareUrl: metadata.shareUrl || '',
+      originalSource: 'youtube',
+      favorite: false,
+      addedAt: Date.now(),
+      lastPlayed: 0
+    };
+    await putTrack(track);
+    setTracks((items) => [track, ...items]);
+    return track;
+  };
+
+  const downloadYoutubeAudio = async ({ url, format, track, addAfterDownload = false, keepBackup = true }) => {
+    const controller = new AbortController();
+    youtubeDownloadAbortRef.current = controller;
+    const isPlaylist = isYoutubePlaylistUrl(url);
+    const failed = [];
+    const downloadedTracks = [];
+    try {
+      await protectDeviceStorage();
+      let playlist = null;
+      let entries = [];
+      setYoutubeTask({ active: true, stage: isPlaylist ? 'preparing' : 'converting', total: isPlaylist ? 0 : 1, completed: 0, failed, message: isPlaylist ? 'Checking which videos are in this playlist…' : '' });
+      if (isPlaylist) {
+        const response = await fetch(`/api/youtube/playlist?url=${encodeURIComponent(url)}`, { signal: controller.signal });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || 'Could not read that playlist.');
+        playlist = payload;
+        entries = payload.entries || [];
+        if (!entries.length) throw new Error('This playlist has no downloadable videos.');
+      } else {
+        entries = [{
+          ...(track || {}),
+          externalId: track?.externalId || getYoutubeVideoId(url),
+          shareUrl: url,
+          source: 'youtube'
+        }];
+      }
+
+      const existingByVideo = new Map(
+        tracks
+          .filter((item) => item.source === 'youtube-download' && item.externalId && item.fileName?.toLowerCase().endsWith(`.${format}`))
+          .map((item) => [item.externalId, item])
+      );
+      for (let index = 0; index < entries.length; index += 1) {
+        const item = entries[index];
+        if (controller.signal.aborted) throw new DOMException('Download cancelled', 'AbortError');
+        const existing = item.externalId ? existingByVideo.get(item.externalId) : null;
+        if (existing) {
+          if (keepBackup && (existing.blob || existing.cachedBlob)) saveRecoveryCopy(existing.blob || existing.cachedBlob, existing.fileName || `${existing.title}.${format}`);
+          downloadedTracks.push(existing);
+          setYoutubeTask({ active: true, stage: 'storing', total: entries.length, completed: index + 1, failed: [...failed], currentTitle: `${existing.title} is already saved`, transferLoaded: 0, transferTotal: 0 });
+          continue;
+        }
+        try {
+          setYoutubeTask({ active: true, stage: 'converting', total: entries.length, completed: index, failed: [...failed], currentTitle: item.title || `Track ${index + 1}`, transferLoaded: 0, transferTotal: 0 });
+          const { blob, title } = await fetchYoutubeAudio(item.shareUrl || url, format, controller.signal, (loaded, total) => {
+            setYoutubeTask({ active: true, stage: 'receiving', total: entries.length, completed: index, failed: [...failed], currentTitle: item.title || 'Receiving audio…', transferLoaded: loaded, transferTotal: total });
+          });
+          if (controller.signal.aborted) throw new DOMException('Download cancelled', 'AbortError');
+          const fileName = `${title}.${format}`;
+          setYoutubeTask({ active: true, stage: 'storing', total: entries.length, completed: index, failed: [...failed], currentTitle: title, transferLoaded: blob.size, transferTotal: blob.size });
+          if (keepBackup) saveRecoveryCopy(blob, fileName);
+          const saved = await storeYoutubeDownload(blob, fileName, { ...item, title });
+          downloadedTracks.push(saved);
+          existingByVideo.set(saved.externalId, saved);
+          setYoutubeTask({ active: true, stage: 'storing', total: entries.length, completed: index + 1, failed: [...failed], currentTitle: `${title} saved`, transferLoaded: 0, transferTotal: 0 });
+        } catch (error) {
+          if (error.name === 'AbortError') throw error;
+          console.error(error);
+          failed.push({ title: item.title || `Track ${index + 1}`, message: error.message || 'Could not download this track.' });
+          setYoutubeTask({ active: true, stage: 'converting', total: entries.length, completed: index + 1, failed: [...failed], currentTitle: `Skipped ${item.title || `track ${index + 1}`}`, transferLoaded: 0, transferTotal: 0 });
+        }
+      }
+
+      if (playlist && downloadedTracks.length) {
+        const sonoroPlaylist = { id: crypto.randomUUID(), name: playlist.title || 'YouTube playlist', trackIds: [...new Set(downloadedTracks.map((item) => item.id))], createdAt: Date.now() };
+        await putPlaylist(sonoroPlaylist);
+        setPlaylists((items) => [...items, sonoroPlaylist]);
+      }
+      await refreshStorage();
+      const stage = failed.length ? 'partial' : 'complete';
+      setYoutubeTask({ active: false, stage, total: entries.length, completed: entries.length, failed: [...failed], currentTitle: playlist ? `${downloadedTracks.length} tracks added to “${playlist.title || 'YouTube playlist'}”` : `${downloadedTracks.length} track saved to your device` });
+      if (!playlist && downloadedTracks[0] && addAfterDownload) setModal({ type: 'add', track: downloadedTracks[0] });
+      notify(failed.length ? `${downloadedTracks.length} tracks saved; ${failed.length} could not be downloaded.` : playlist ? `${downloadedTracks.length} tracks saved as a playlist.` : 'Audio saved to your device.');
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        setYoutubeTask((currentTask) => ({ ...currentTask, active: false, stage: 'cancelled', message: 'Any tracks already saved are safely kept on this device.' }));
+        notify('Download cancelled. Saved tracks are still in your library.', 'error');
+      } else {
+        console.error(error);
+        setYoutubeTask({ active: false, stage: 'error', total: 0, completed: 0, failed, message: error.message || 'Could not start the download.' });
+        notify(error.message || 'Could not download this audio.', 'error');
+      }
+    } finally {
+      youtubeDownloadAbortRef.current = null;
+    }
+  };
+
+  const cancelYoutubeDownload = () => {
+    if (!youtubeDownloadAbortRef.current) return;
+    setYoutubeTask((currentTask) => currentTask ? { ...currentTask, stage: 'cancelling', message: 'Stopping after the current network request…' } : currentTask);
+    youtubeDownloadAbortRef.current.abort();
   };
 
   const createPlaylist = async (name, trackToAdd = null) => {
@@ -1056,7 +1224,7 @@ function App() {
       <nav className="mobile-nav"><button className={view === 'home' ? 'active' : ''} onClick={() => goTo('home')}><Home size={20} /><span>Home</span></button><button className={view === 'explore' || view === 'arabic' ? 'active' : ''} onClick={() => goTo(view === 'arabic' ? 'arabic' : 'explore')}><Compass size={20} /><span>{view === 'arabic' ? 'Classics' : 'Explore'}</span></button><button onClick={() => setModal({ type: 'youtube-download' })}><Download size={20} /><span>Download</span></button><button className={view === 'library' ? 'active' : ''} onClick={() => goTo('library')}><Library size={20} /><span>Library</span></button></nav>
 
       {modal?.type === 'upload' && <UploadModal onClose={() => !importing && setModal(null)} onFiles={importFiles} onFolder={(files) => importFiles(files, { folderImport: true })} importing={importing} />}
-      {modal?.type === 'youtube-download' && <YoutubeDownloadModal onClose={() => !youtubeDownloading && setModal(null)} onDownload={downloadYoutubeAudio} downloading={youtubeDownloading} track={modal.track} />}
+      {modal?.type === 'youtube-download' && <YoutubeDownloadModal onClose={() => setModal(null)} onCancel={cancelYoutubeDownload} onDownload={downloadYoutubeAudio} task={youtubeTask} track={modal.track} />}
       {modal?.type === 'playlist' && <PlaylistModal onClose={() => setModal(null)} onCreate={createPlaylist} />}
       {modal?.type === 'add' && <AddToPlaylistModal track={modal.track} playlists={playlists} onClose={() => setModal(null)} onAdd={(playlist) => addToPlaylist(playlist, modal.track)} onNew={() => setModal({ type: 'playlistWithTrack', track: modal.track })} />}
       {modal?.type === 'playlistWithTrack' && <PlaylistModal onClose={() => setModal(null)} onCreate={(name) => createPlaylist(name, modal.track)} />}
