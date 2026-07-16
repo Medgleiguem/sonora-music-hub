@@ -1,0 +1,30 @@
+{
+  "name": "sonora-music-hub",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "downloader": "node --env-file-if-exists=.env.local --env-file-if-exists=.env server/index.mjs",
+    "build": "next build",
+    "start": "next start",
+    "postinstall": "cp node_modules/jsmediatags/dist/jsmediatags.min.js node_modules/jsmediatags/dist/jsmediatags.js"
+  },
+  "dependencies": {
+    "idb": "^8.0.3",
+    "jsmediatags": "^3.9.7",
+    "lucide-react": "^0.468.0",
+    "next": "^16.2.10",
+    "postcss": "8.5.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-youtube": "^10.1.0"
+  },
+  "overrides": {
+    "postcss": "8.5.10"
+  }
+}

@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.next/
+
+# Local secrets and deployment configuration
+.env
+.env.*
+!.env.example
+*.local
+.codex/
+.agents/
+
+# Editor and OS files
+.DS_Store
+.vscode/
+.idea/
+.vercel/
+.vercel
+.deploy.env
