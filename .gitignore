@@ -17,3 +17,5 @@ dist/
 .vercel/
 .vercel
 .deploy.env
+youtube-cookies.txt
+*.cookies.txt

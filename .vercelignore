@@ -9,3 +9,5 @@ node_modules
 .env.*
 !.env.example
 npm-debug.log*
+youtube-cookies.txt
+*.cookies.txt
