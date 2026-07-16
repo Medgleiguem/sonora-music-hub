@@ -16,6 +16,7 @@ const allowedHosts = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com',
 const formats = { mp3: 'audio/mpeg', m4a: 'audio/mp4', opus: 'audio/opus' };
 const maxUrlLength = 2048;
 const maxConcurrent = 2;
+const ytDlpBaseArgs = ['--js-runtimes', 'node'];
 let activeDownloads = 0;
 
 const send = (response, status, body, type = 'text/plain') => {
@@ -55,7 +56,7 @@ const isYoutubeUrl = (value) => {
 };
 
 const run = (args, cwd) => new Promise((resolve, reject) => {
-  const child = spawn(ytDlp, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(ytDlp, [...ytDlpBaseArgs, ...args], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = ''; let stderr = '';
   child.stdout.on('data', (chunk) => { stdout += chunk; });
   child.stderr.on('data', (chunk) => { stderr += chunk; });
