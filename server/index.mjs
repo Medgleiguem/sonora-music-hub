@@ -49,6 +49,18 @@ const authorizeDownload = (requestUrl, request) => {
   return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 };
 
+const authorizePlaylist = (requestUrl, request) => {
+  if (authorizeBearer(request)) return true;
+  if (!apiKey) return false;
+  const source = requestUrl.searchParams.get('url') || '';
+  const expires = Number(requestUrl.searchParams.get('expires') || 0);
+  const provided = requestUrl.searchParams.get('signature') || '';
+  if (!Number.isSafeInteger(expires) || expires < Math.floor(Date.now() / 1000) || expires > Math.floor(Date.now() / 1000) + 600) return false;
+  const expected = createHmac('sha256', apiKey).update(`${expires}\n${source}\nplaylist`).digest('hex');
+  if (provided.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+};
+
 const allowCors = (request, response) => {
   const origin = request.headers.origin;
   if (origin && allowedOrigins.includes(origin)) {
@@ -116,7 +128,7 @@ const server = createServer(async (request, response) => {
     }
   }
   if (requestUrl.pathname === '/api/youtube/playlist') {
-    if (!authorizeBearer(request)) return send(response, 401, 'Unauthorized');
+    if (!authorizePlaylist(requestUrl, request)) return send(response, 401, 'Unauthorized');
     const source = requestUrl.searchParams.get('url') || '';
     if (source.length > maxUrlLength) return send(response, 400, 'The URL is too long.');
     if (!isYoutubeUrl(source)) return send(response, 400, 'Only valid YouTube playlist URLs are supported.');

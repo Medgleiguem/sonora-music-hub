@@ -1,8 +1,8 @@
+import { createHmac } from 'node:crypto';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
 
 const YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be']);
 
@@ -33,25 +33,11 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Paste a valid YouTube playlist URL.' }, { status: 400 });
   }
 
-  try {
-    const target = new URL(`${worker}/api/youtube/playlist`);
-    target.searchParams.set('url', source);
-    const response = await fetch(target, {
-      headers: { Authorization: `Bearer ${secret}` },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(55_000)
-    });
-    const body = await response.text();
-    if (!response.ok) return NextResponse.json({ error: body || 'Could not read that playlist.' }, { status: response.status });
-    return new NextResponse(body, {
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
-    });
-  } catch (error) {
-    console.error('Playlist worker request failed', {
-      name: error?.name,
-      message: error?.message,
-      cause: error?.cause?.code || error?.cause?.message
-    });
-    return NextResponse.json({ error: 'Could not reach the audio conversion worker.' }, { status: 502 });
-  }
+  const expires = Math.floor(Date.now() / 1000) + 300;
+  const signature = createHmac('sha256', secret).update(`${expires}\n${source}\nplaylist`).digest('hex');
+  const target = new URL(`${worker}/api/youtube/playlist`);
+  target.searchParams.set('url', source);
+  target.searchParams.set('expires', String(expires));
+  target.searchParams.set('signature', signature);
+  return NextResponse.redirect(target, 307);
 }
