@@ -46,7 +46,12 @@ export async function GET(request) {
     return new NextResponse(body, {
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
     });
-  } catch {
+  } catch (error) {
+    console.error('Playlist worker request failed', {
+      name: error?.name,
+      message: error?.message,
+      cause: error?.cause?.code || error?.cause?.message
+    });
     return NextResponse.json({ error: 'Could not reach the audio conversion worker.' }, { status: 502 });
   }
 }
