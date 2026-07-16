@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import 'jsmediatags/dist/jsmediatags.min.js';
 import YouTube from 'react-youtube';
 import {
-  AlertCircle, ArrowLeft, Check, ChevronRight, Clock3, Cloud, Compass, Disc3, Download,
+  AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Check, ChevronDown, ChevronRight, Clock3, Cloud, Compass, Disc3, Download,
   DownloadCloud, FolderUp, HardDrive, Headphones, Heart, Home, Library,
-  ListMusic, ListPlus, LoaderCircle, Menu, MoreHorizontal, Music2, Pause,
+  ListEnd, ListMusic, ListPlus, LoaderCircle, Menu, MoreHorizontal, Music2, Pause,
   Play, Plus, Radio, Repeat2, Search, Settings, Shuffle, SkipBack,
-  SkipForward, Sparkles, Trash2, Upload, Volume2, VolumeX, WifiOff, X
+  SkipForward, SlidersHorizontal, Sparkles, Trash2, Upload, Volume2, VolumeX, WifiOff, X
 } from 'lucide-react';
 import {
   deletePlaylist as removePlaylist,
@@ -45,6 +45,15 @@ const formatTime = (seconds = 0) => {
   if (!Number.isFinite(seconds)) return '0:00';
   const mins = Math.floor(seconds / 60);
   return `${mins}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+};
+
+const shuffled = (items = []) => {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
 };
 
 const formatBytes = (bytes = 0) => {
@@ -185,7 +194,7 @@ function EmptyState({ icon: Icon = Music2, title, text, action, actionLabel }) {
   );
 }
 
-function TrackRow({ track, index, active, playing, onPlay, onFavorite, onDownload, onAdd, onDelete, showAlbum = true }) {
+function TrackRow({ track, index, active, playing, onPlay, onFavorite, onDownload, onAdd, onDelete, onMore, showAlbum = true }) {
   return (
     <div className={`track-row ${active ? 'active' : ''}`}>
       <button className="track-index" onClick={onPlay} aria-label={`${playing && active ? 'Pause' : 'Play'} ${track.title}`}>
@@ -193,10 +202,10 @@ function TrackRow({ track, index, active, playing, onPlay, onFavorite, onDownloa
         <span className="row-play">{playing && active ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" />}</span>
       </button>
       <Cover track={track} size="small" />
-      <div className="track-name">
+      <button className="track-name track-name-button" onClick={onPlay}>
         <strong>{track.title}</strong>
         <span>{track.artist || 'Unknown artist'}</span>
-      </div>
+      </button>
       {showAlbum && <span className="track-album">{track.album || 'Single'}</span>}
       <span className="track-source">
         {track.blob || track.cachedBlob
@@ -213,12 +222,13 @@ function TrackRow({ track, index, active, playing, onPlay, onFavorite, onDownloa
         )}
         <button className="icon-button subtle" onClick={onAdd} aria-label="Add to playlist"><ListPlus size={17} /></button>
         <button className="icon-button subtle danger-hover" onClick={onDelete} aria-label="Remove from library"><Trash2 size={16} /></button>
+        <button className="icon-button subtle track-more" onClick={onMore} aria-label={`More options for ${track.title}`}><MoreHorizontal size={18} /></button>
       </div>
     </div>
   );
 }
 
-function TrackCard({ track, onPlay, onSave, onAdd, onDownload, saved, active, playing }) {
+function TrackCard({ track, onPlay, onSave, onAdd, onDownload, onMore, saved, active, playing }) {
   return (
     <article className={`track-card ${active ? 'active' : ''}`}>
       <div className="card-art-wrap">
@@ -239,6 +249,7 @@ function TrackCard({ track, onPlay, onSave, onAdd, onDownload, saved, active, pl
             <Download size={15} /><span>Download</span>
           </button>
         )}
+        {onMore && <button className="card-more" onClick={onMore} aria-label={`More options for ${track.title}`}><MoreHorizontal size={17} /></button>}
       </div>
       <h3>{track.title}</h3>
       <p>{track.artist || 'Unknown artist'}</p>
@@ -354,6 +365,64 @@ function AddToPlaylistModal({ track, playlists, onClose, onAdd, onNew }) {
   );
 }
 
+function TrackActionsModal({
+  track, stored, active, playlist, canMoveUp, canMoveDown, onClose, onPlay, onPlayNext,
+  onQueue, onFavorite, onAdd, onDownload, onRemoveFromPlaylist, onMove, onDelete
+}) {
+  return (
+    <Modal title="Track options" subtitle="Choose what happens next." onClose={onClose}>
+      <div className="action-track-summary"><Cover track={track} size="small" /><div><strong>{track.title}</strong><span>{track.artist || 'Unknown artist'}</span></div></div>
+      <div className="track-action-grid">
+        <button onClick={onPlay}><span><Play size={18} fill="currentColor" /></span><div><strong>{active ? 'Restart track' : 'Play now'}</strong><small>Start this song immediately</small></div></button>
+        <button onClick={onPlayNext}><span><ListEnd size={18} /></span><div><strong>Play next</strong><small>Put it after the current song</small></div></button>
+        <button onClick={onQueue}><span><ListMusic size={18} /></span><div><strong>Add to queue</strong><small>Play it later in this session</small></div></button>
+        <button onClick={onAdd}><span><ListPlus size={18} /></span><div><strong>Add to playlist</strong><small>Save it in a collection</small></div></button>
+        <button onClick={onFavorite}><span><Heart size={18} fill={stored?.favorite ? 'currentColor' : 'none'} /></span><div><strong>{stored?.favorite ? 'Remove from liked songs' : 'Add to liked songs'}</strong><small>Update your favorites</small></div></button>
+        {onDownload && <button onClick={onDownload}><span><DownloadCloud size={18} /></span><div><strong>{track.source === 'youtube' ? 'Download audio' : 'Save offline'}</strong><small>Keep a copy on this device</small></div></button>}
+      </div>
+      {playlist && <div className="playlist-track-actions">
+        <p>In “{playlist.name}”</p>
+        <div><button disabled={!canMoveUp} onClick={() => onMove(-1)}><ArrowUp size={16} />Move up</button><button disabled={!canMoveDown} onClick={() => onMove(1)}><ArrowDown size={16} />Move down</button></div>
+        <button className="danger-action" onClick={onRemoveFromPlaylist}><X size={16} />Remove from this playlist</button>
+      </div>}
+      {stored && <button className="danger-action library-danger" onClick={onDelete}><Trash2 size={16} />Remove from library</button>}
+    </Modal>
+  );
+}
+
+function MobileNowPlaying({
+  track, playing, progress, duration, volume, muted, shuffle, repeat, queue, currentQueueIndex,
+  onClose, onTogglePlay, onPrevious, onNext, onSeek, onVolume, onMute, onShuffle, onRepeat,
+  onFavorite, onAdd, onMore, onOpenQueue, onSelectQueueTrack
+}) {
+  const upcoming = queue.slice(Math.max(0, currentQueueIndex + 1), Math.max(0, currentQueueIndex + 1) + 3);
+  const repeatLabel = repeat === 'one' ? 'Repeat one' : repeat === 'all' ? 'Repeat all' : 'Repeat off';
+  return (
+    <section className="mobile-now-playing" role="dialog" aria-modal="true" aria-label={`Now playing ${track.title}`}>
+      <header className="mobile-player-header"><button className="icon-button" onClick={onClose} aria-label="Close now playing"><ChevronDown size={25} /></button><span>Now playing</span><button className="icon-button" onClick={onMore} aria-label="Track options"><MoreHorizontal size={22} /></button></header>
+      <div className="mobile-player-scroll">
+        <div className="mobile-player-art"><Cover track={track} size="hero" /></div>
+        <div className="mobile-player-meta"><div><h2>{track.title}</h2><p>{track.artist || 'Unknown artist'}{track.album ? ` · ${track.album}` : ''}</p></div><button className={`icon-button mobile-favorite ${track.favorite ? 'selected' : ''}`} onClick={onFavorite} aria-label={track.favorite ? 'Remove from favorites' : 'Add to favorites'}><Heart size={24} fill={track.favorite ? 'currentColor' : 'none'} /></button></div>
+        <div className="mobile-seek"><input aria-label="Track position" type="range" min="0" max={duration || 0} step="0.1" value={Math.min(progress, duration || 0)} onChange={(event) => onSeek(Number(event.target.value))} style={{ '--progress': `${duration ? progress / duration * 100 : 0}%` }} /><div><span>{formatTime(progress)}</span><span>-{formatTime(Math.max(0, duration - progress))}</span></div></div>
+        <div className="mobile-primary-controls">
+          <button className={shuffle ? 'control-active' : ''} onClick={onShuffle} aria-label={shuffle ? 'Turn shuffle off' : 'Turn shuffle on'} aria-pressed={shuffle}><Shuffle size={21} /></button>
+          <button onClick={onPrevious} aria-label="Previous track"><SkipBack size={29} fill="currentColor" /></button>
+          <button className="mobile-main-play" onClick={onTogglePlay} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}</button>
+          <button onClick={onNext} aria-label="Next track"><SkipForward size={29} fill="currentColor" /></button>
+          <button className={repeat !== 'off' ? 'control-active repeat-button' : 'repeat-button'} onClick={onRepeat} aria-label={repeatLabel}><Repeat2 size={21} />{repeat === 'one' && <sup>1</sup>}</button>
+        </div>
+        <div className="mobile-player-tools">
+          <button onClick={onOpenQueue}><ListMusic size={19} /><span>Queue</span><small>{queue.length}</small></button>
+          <button onClick={onAdd}><ListPlus size={19} /><span>Playlist</span></button>
+          <button onClick={onMore}><SlidersHorizontal size={19} /><span>Options</span></button>
+        </div>
+        <div className="mobile-volume"><button className="icon-button" onClick={onMute} aria-label={muted ? 'Unmute' : 'Mute'}>{muted || volume === 0 ? <VolumeX size={19} /> : <Volume2 size={19} />}</button><input aria-label="Volume" type="range" min="0" max="1" step="0.01" value={volume} onChange={(event) => onVolume(Number(event.target.value))} style={{ '--progress': `${volume * 100}%` }} /></div>
+        <section className="mobile-up-next"><div className="mobile-up-next-head"><div><p className="eyebrow">UP NEXT</p><h3>{upcoming.length ? `${upcoming.length} coming up` : 'End of queue'}</h3></div><button onClick={onOpenQueue}>View queue <ChevronRight size={16} /></button></div>{upcoming.map((item, index) => <button className="mobile-up-next-row" key={`${item.id}-${index}`} onClick={() => onSelectQueueTrack(item)}><Cover track={item} size="tiny" /><span><strong>{item.title}</strong><small>{item.artist || 'Unknown artist'}</small></span><Play size={16} fill="currentColor" /></button>)}</section>
+      </div>
+    </section>
+  );
+}
+
 function SettingsModal({ onClose, initialClientId, initialYoutubeKey, onSave, storage, youtubeServerManaged }) {
   const [clientId, setClientId] = useState(initialClientId);
   const [youtubeKey, setYoutubeKey] = useState(initialYoutubeKey);
@@ -422,6 +491,7 @@ function App() {
   const [modal, setModal] = useState(null);
   const [importing, setImporting] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
+  const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [toast, setToast] = useState(null);
   const [youtubeTask, setYoutubeTask] = useState(null);
@@ -456,6 +526,10 @@ function App() {
 
   useEffect(() => () => youtubeDownloadAbortRef.current?.abort(), []);
 
+  useEffect(() => {
+    if (!current) { setNowPlayingOpen(false); setQueueOpen(false); }
+  }, [current]);
+
   const protectDeviceStorage = useCallback(async () => {
     const persisted = await requestPersistentStorage();
     if (persisted) await refreshStorage();
@@ -479,21 +553,29 @@ function App() {
 
   const playNext = useCallback(() => {
     if (!queue.length || !current) return;
-    if (repeat === 'one') {
+    const restartCurrent = () => {
+      setProgress(0);
       if (current.source === 'youtube' && youtubePlayerRef.current) {
         youtubePlayerRef.current.seekTo(0, true);
         youtubePlayerRef.current.playVideo();
       } else {
-        audioRef.current.currentTime = 0; audioRef.current.play();
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => setPlaying(false));
       }
+    };
+    if (repeat === 'one') {
+      restartCurrent();
       return;
     }
     const currentIndex = queue.findIndex((track) => track.id === current.id);
-    const nextIndex = shuffle ? Math.floor(Math.random() * queue.length) : currentIndex + 1;
+    const nextIndex = currentIndex + 1;
     if (nextIndex < queue.length) setCurrent(queue[nextIndex]);
-    else if (repeat === 'all') setCurrent(queue[0]);
+    else if (repeat === 'all') {
+      if (queue[0]?.id === current.id) restartCurrent();
+      else setCurrent(queue[0]);
+    }
     else setPlaying(false);
-  }, [current, queue, repeat, shuffle]);
+  }, [current, queue, repeat]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -600,20 +682,79 @@ function App() {
     else if (repeat === 'all' && queue.length) setCurrent(queue[queue.length - 1]);
   }, [current, queue, repeat]);
 
+  const seekTo = useCallback((nextTime) => {
+    const safeTime = Math.max(0, Math.min(Number(nextTime) || 0, duration || Number(nextTime) || 0));
+    if (current?.source === 'youtube') youtubePlayerRef.current?.seekTo(safeTime, true);
+    else if (audioRef.current) audioRef.current.currentTime = safeTime;
+    setProgress(safeTime);
+  }, [current, duration]);
+
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
-    navigator.mediaSession.setActionHandler('play', () => setPlaying(true));
-    navigator.mediaSession.setActionHandler('pause', () => setPlaying(false));
-    navigator.mediaSession.setActionHandler('nexttrack', playNext);
-    navigator.mediaSession.setActionHandler('previoustrack', playPrevious);
-  }, [playNext, playPrevious]);
+    const actions = {
+      play: () => setPlaying(true),
+      pause: () => setPlaying(false),
+      nexttrack: playNext,
+      previoustrack: playPrevious,
+      seekto: (details) => seekTo(details.seekTime),
+      seekbackward: (details) => seekTo(progress - (details.seekOffset || 10)),
+      seekforward: (details) => seekTo(progress + (details.seekOffset || 10))
+    };
+    Object.entries(actions).forEach(([action, handler]) => {
+      try { navigator.mediaSession.setActionHandler(action, handler); } catch { /* Browser does not support this media action. */ }
+    });
+  }, [playNext, playPrevious, progress, seekTo]);
 
   const playTrack = useCallback((track, list = tracks) => {
     if (current?.id === track.id) { setPlaying((value) => !value); return; }
-    setQueue(list.length ? list : [track]);
+    const sourceList = list.length ? list : [track];
+    setQueue(shuffle ? [track, ...shuffled(sourceList.filter((item) => item.id !== track.id))] : sourceList);
     setCurrent(track);
     setPlaying(true);
-  }, [current, tracks]);
+  }, [current, shuffle, tracks]);
+
+  const startPlayback = useCallback((list, shuffleMode = false) => {
+    const available = list.filter(Boolean);
+    if (!available.length) return;
+    const nextQueue = shuffleMode ? shuffled(available) : available;
+    setShuffle(shuffleMode);
+    setQueue(nextQueue);
+    setCurrent(nextQueue[0]);
+    setPlaying(true);
+  }, []);
+
+  const toggleShuffle = useCallback(() => {
+    setShuffle((enabled) => {
+      const next = !enabled;
+      if (next && current) {
+        setQueue((items) => {
+          const currentIndex = items.findIndex((item) => item.id === current.id);
+          if (currentIndex < 0) return [current, ...shuffled(items.filter((item) => item.id !== current.id))];
+          return [...items.slice(0, currentIndex + 1), ...shuffled(items.slice(currentIndex + 1))];
+        });
+      }
+      return next;
+    });
+  }, [current]);
+
+  const playTrackNext = useCallback((track) => {
+    if (!current) { startPlayback([track]); return; }
+    if (current.id === track.id) return;
+    setQueue((items) => {
+      const base = items.length ? items : [current];
+      const withoutTrack = base.filter((item) => item.id !== track.id);
+      const currentIndex = withoutTrack.findIndex((item) => item.id === current.id);
+      const insertAt = currentIndex < 0 ? 1 : currentIndex + 1;
+      return [...withoutTrack.slice(0, insertAt), track, ...withoutTrack.slice(insertAt)];
+    });
+    notify('Playing next');
+  }, [current, notify, startPlayback]);
+
+  const addTrackToQueue = useCallback((track) => {
+    if (!current) { startPlayback([track]); return; }
+    setQueue((items) => items.some((item) => item.id === track.id) ? items : [...(items.length ? items : [current]), track]);
+    notify('Added to queue');
+  }, [current, notify, startPlayback]);
 
   const readTags = (file) => new Promise((resolve) => {
     if (!jsmediatags) return resolve({});
@@ -725,6 +866,7 @@ function App() {
     if (!stored) {
       const added = { ...track, favorite: true, addedAt: Date.now() };
       await putTrack(added); setTracks((items) => [added, ...items]);
+      setCurrent((item) => item?.id === added.id ? added : item);
       notify('Saved to favorites'); return;
     }
     await updateTrack({ ...stored, favorite: !stored.favorite });
@@ -735,6 +877,8 @@ function App() {
     await removeTrack(track.id);
     setTracks((items) => items.filter((item) => item.id !== track.id));
     setPlaylists((items) => items.map((playlist) => ({ ...playlist, trackIds: playlist.trackIds.filter((id) => id !== track.id) })));
+    setSelectedPlaylist((playlist) => playlist ? { ...playlist, trackIds: playlist.trackIds.filter((id) => id !== track.id) } : playlist);
+    setQueue((items) => items.filter((item) => item.id !== track.id));
     if (current?.id === track.id) { setCurrent(null); setPlaying(false); }
     refreshStorage();
     notify('Track removed');
@@ -933,8 +1077,32 @@ function App() {
     const updated = { ...playlist, trackIds: [...playlist.trackIds, track.id] };
     await putPlaylist(updated);
     setPlaylists((items) => items.map((item) => item.id === playlist.id ? updated : item));
+    setSelectedPlaylist((item) => item?.id === updated.id ? updated : item);
     setModal(null);
     notify(`Added to ${playlist.name}`);
+  };
+
+  const removeFromPlaylist = async (playlist, track) => {
+    const updated = { ...playlist, trackIds: playlist.trackIds.filter((id) => id !== track.id) };
+    await putPlaylist(updated);
+    setPlaylists((items) => items.map((item) => item.id === updated.id ? updated : item));
+    setSelectedPlaylist((item) => item?.id === updated.id ? updated : item);
+    setModal(null);
+    notify(`Removed from ${playlist.name}`);
+  };
+
+  const movePlaylistTrack = async (playlist, track, direction) => {
+    const from = playlist.trackIds.indexOf(track.id);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= playlist.trackIds.length) return;
+    const trackIds = [...playlist.trackIds];
+    [trackIds[from], trackIds[to]] = [trackIds[to], trackIds[from]];
+    const updated = { ...playlist, trackIds };
+    await putPlaylist(updated);
+    setPlaylists((items) => items.map((item) => item.id === updated.id ? updated : item));
+    setSelectedPlaylist((item) => item?.id === updated.id ? updated : item);
+    setModal((item) => item?.type === 'track-actions' ? { ...item, playlist: updated } : item);
+    notify(direction < 0 ? 'Moved up in playlist' : 'Moved down in playlist');
   };
 
   const deletePlaylist = async (playlist) => {
@@ -1074,12 +1242,25 @@ function App() {
 
   const cycleRepeat = () => setRepeat((value) => value === 'off' ? 'all' : value === 'all' ? 'one' : 'off');
   const currentQueueIndex = queue.findIndex((track) => track.id === current?.id);
+  const openTrackActions = (track, list = tracks, playlist = null) => setModal({ type: 'track-actions', track, list, playlist });
+  const openMobilePlayer = () => {
+    if (window.matchMedia('(max-width: 900px)').matches) setNowPlayingOpen(true);
+  };
+  const openQueue = () => { setNowPlayingOpen(false); setQueueOpen(true); };
+  const clearUpcomingQueue = () => {
+    setQueue(current ? [current] : []);
+    notify('Upcoming queue cleared');
+  };
+  const actionTrack = modal?.type === 'track-actions' ? modal.track : null;
+  const actionStoredTrack = actionTrack ? tracks.find((track) => track.id === actionTrack.id) : null;
+  const actionPlaylist = modal?.type === 'track-actions' ? modal.playlist : null;
+  const actionPlaylistIndex = actionPlaylist && actionTrack ? actionPlaylist.trackIds.indexOf(actionTrack.id) : -1;
 
   const viewMeta = {
     library: ['Your library', `${tracks.length} ${tracks.length === 1 ? 'track' : 'tracks'} collected in one place.`],
     favorites: ['Liked songs', 'The tracks you always come back to.'],
     offline: ['Offline music', 'Ready to play anywhere, no connection needed.'],
-    playlist: [selectedPlaylist?.name || 'Playlist', `${filteredTracks.length} tracks`]
+    playlist: [selectedPlaylist?.name || 'Playlist', `${filteredTracks.length} ${filteredTracks.length === 1 ? 'track' : 'tracks'}`]
   };
 
   return (
@@ -1124,7 +1305,7 @@ function App() {
               {search.trim() ? (
                 <section className="section-block">
                   <div className="section-title"><div><p className="eyebrow">SEARCH RESULTS</p><h2>{`Matches for “${search}”`}</h2></div><button onClick={() => setSearch('')}>Clear</button></div>
-                  {filteredTracks.length ? <div className="card-grid catalog-grid">{filteredTracks.map((track) => <TrackCard key={track.id} track={track} onPlay={() => playTrack(track, filteredTracks)} active={current?.id === track.id} playing={playing} />)}</div> : <EmptyState icon={Search} title="No matches yet" text="Try a different artist, title, or album from your library." />}
+                  {filteredTracks.length ? <div className="card-grid catalog-grid">{filteredTracks.map((track) => <TrackCard key={track.id} track={track} onPlay={() => playTrack(track, filteredTracks)} onMore={() => openTrackActions(track, filteredTracks)} active={current?.id === track.id} playing={playing} />)}</div> : <EmptyState icon={Search} title="No matches yet" text="Try a different artist, title, or album from your library." />}
                 </section>
               ) : !tracks.length ? (
                 <section className="onboarding-card">
@@ -1138,7 +1319,7 @@ function App() {
                     <button onClick={() => goTo('offline')}><span className="quick-icon offline"><Download size={22} /></span><div><strong>Offline</strong><small>{tracks.filter((track) => track.blob || track.cachedBlob).length} tracks</small></div><Play size={18} fill="currentColor" /></button>
                     {playlists.slice(0, 2).map((playlist) => <button key={playlist.id} onClick={() => goTo('playlist', playlist)}><span className="quick-icon" style={{ background: artworkGradient(playlist.id) }}><ListMusic size={22} /></span><div><strong>{playlist.name}</strong><small>{playlist.trackIds.length} tracks</small></div><Play size={18} fill="currentColor" /></button>)}
                   </section>
-                  <section className="section-block"><div className="section-title"><div><p className="eyebrow">BACK IN ROTATION</p><h2>Recently added</h2></div><button onClick={() => goTo('library')}>See all <ChevronRight size={16} /></button></div><div className="card-grid">{tracks.slice(0, 6).map((track) => <TrackCard key={track.id} track={track} onPlay={() => playTrack(track, tracks)} active={current?.id === track.id} playing={playing} />)}</div></section>
+                  <section className="section-block"><div className="section-title"><div><p className="eyebrow">BACK IN ROTATION</p><h2>Recently added</h2></div><button onClick={() => goTo('library')}>See all <ChevronRight size={16} /></button></div><div className="card-grid">{tracks.slice(0, 6).map((track) => <TrackCard key={track.id} track={track} onPlay={() => playTrack(track, tracks)} onMore={() => openTrackActions(track, tracks)} active={current?.id === track.id} playing={playing} />)}</div></section>
                 </>
               )}
               <section className="feature-strip"><div><WifiOff size={20} /><span><strong>Offline first</strong><small>Imported songs play without internet</small></span></div><div><HardDrive size={20} /><span><strong>Private by design</strong><small>Your files stay on your device</small></span></div><div><Radio size={20} /><span><strong>One music hub</strong><small>Your files and free music together</small></span></div></section>
@@ -1157,7 +1338,7 @@ function App() {
               ) : catalogLoading ? (
                 <div className="loading-state"><LoaderCircle className="spin" size={28} /><span>Finding great music…</span></div>
               ) : (
-                <section className="section-block"><div className="section-title"><div><p className="eyebrow">{search ? 'SEARCH RESULTS' : 'TRENDING NOW'}</p><h2>{search ? `Songs for “${search}”` : catalogSource === 'youtube' ? 'Popular music in your region' : 'Fresh from independent artists'}</h2></div></div>{catalogTracks.length ? <div className="card-grid catalog-grid">{catalogTracks.map((track) => <TrackCard key={track.id} track={track} onPlay={() => playTrack(track, catalogTracks)} onSave={() => saveCatalogTrack(track)} onAdd={() => setModal({ type: 'add', track })} onDownload={track.source === 'youtube' ? () => setModal({ type: 'youtube-download', track }) : undefined} saved={tracks.some((item) => item.id === track.id)} active={current?.id === track.id} playing={playing} />)}</div> : <EmptyState icon={Search} title="No tracks found" text="Try another artist, track, genre, or mood." />}</section>
+                <section className="section-block"><div className="section-title"><div><p className="eyebrow">{search ? 'SEARCH RESULTS' : 'TRENDING NOW'}</p><h2>{search ? `Songs for “${search}”` : catalogSource === 'youtube' ? 'Popular music in your region' : 'Fresh from independent artists'}</h2></div></div>{catalogTracks.length ? <div className="card-grid catalog-grid">{catalogTracks.map((track) => <TrackCard key={track.id} track={track} onPlay={() => playTrack(track, catalogTracks)} onSave={() => saveCatalogTrack(track)} onAdd={() => setModal({ type: 'add', track })} onDownload={track.source === 'youtube' ? () => setModal({ type: 'youtube-download', track }) : undefined} onMore={() => openTrackActions(track, catalogTracks)} saved={tracks.some((item) => item.id === track.id)} active={current?.id === track.id} playing={playing} />)}</div> : <EmptyState icon={Search} title="No tracks found" text="Try another artist, track, genre, or mood." />}</section>
               )}
               <p className="catalog-legal">{catalogSource === 'youtube' ? <>Streaming uses the official visible YouTube player. The audio download tool is only for content you own or have permission to save, subject to the <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer">YouTube Terms of Service</a>.</> : 'Offline download is shown only when the Jamendo artist has enabled it.'}</p>
             </div>
@@ -1179,7 +1360,7 @@ function App() {
               ) : (
                 <section className="section-block">
                   <div className="section-title arabic-section-title"><div><p className="eyebrow">{search ? 'SEARCH RESULTS' : 'FEATURED ARTIST'}</p><h2>{search ? `Classics for “${search}”` : <><span dir="rtl">{arabicArtist.arabic}</span> · {arabicArtist.name}</>}</h2></div>{catalogTracks.length > 0 && <button className="save-selection" onClick={saveArabicSelection}><ListPlus size={16} />Save all as playlist</button>}</div>
-                  {catalogTracks.length ? <div className="card-grid catalog-grid">{catalogTracks.map((track) => <TrackCard key={track.id} track={track} onPlay={() => playTrack(track, catalogTracks)} onSave={() => saveCatalogTrack(track)} onAdd={() => setModal({ type: 'add', track })} onDownload={() => setModal({ type: 'youtube-download', track })} saved={tracks.some((item) => item.id === track.id)} active={current?.id === track.id} playing={playing} />)}</div> : <EmptyState icon={Search} title="No classics found" text="Try another artist or search in Arabic or English." />}
+                  {catalogTracks.length ? <div className="card-grid catalog-grid">{catalogTracks.map((track) => <TrackCard key={track.id} track={track} onPlay={() => playTrack(track, catalogTracks)} onSave={() => saveCatalogTrack(track)} onAdd={() => setModal({ type: 'add', track })} onDownload={() => setModal({ type: 'youtube-download', track })} onMore={() => openTrackActions(track, catalogTracks)} saved={tracks.some((item) => item.id === track.id)} active={current?.id === track.id} playing={playing} />)}</div> : <EmptyState icon={Search} title="No classics found" text="Try another artist or search in Arabic or English." />}
                 </section>
               )}
               <p className="catalog-legal">Streaming uses the official visible YouTube player. Download audio only when you own the content or have permission to save it, subject to the <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer">YouTube Terms of Service</a>.</p>
@@ -1190,10 +1371,10 @@ function App() {
             <div className="page collection-page">
               <section className="collection-header">
                 <div className="collection-art" style={{ background: view === 'favorites' ? 'linear-gradient(145deg,#cf63ff,#6532d4)' : view === 'offline' ? 'linear-gradient(145deg,#b8f34a,#348d53)' : artworkGradient(selectedPlaylist?.id || view) }}>{view === 'favorites' ? <Heart size={42} fill="currentColor" /> : view === 'offline' ? <Download size={42} /> : view === 'playlist' ? <ListMusic size={42} /> : <Library size={42} />}</div>
-                <div><p className="eyebrow">{view === 'playlist' ? 'PLAYLIST' : 'COLLECTION'}</p><h1>{viewMeta[view]?.[0]}</h1><p>{viewMeta[view]?.[1]}</p><div className="collection-actions"><button className="round-play" disabled={!filteredTracks.length} onClick={() => filteredTracks[0] && playTrack(filteredTracks[0], filteredTracks)}><Play size={22} fill="currentColor" /></button>{view === 'playlist' && <button className="icon-button bordered" onClick={() => deletePlaylist(selectedPlaylist)}><Trash2 size={18} /></button>}</div></div>
+                <div><p className="eyebrow">{view === 'playlist' ? 'PLAYLIST' : 'COLLECTION'}</p><h1>{viewMeta[view]?.[0]}</h1><p>{viewMeta[view]?.[1]}</p><div className="collection-actions"><button className="collection-play-button primary" disabled={!filteredTracks.length} onClick={() => startPlayback(filteredTracks, false)}><Play size={18} fill="currentColor" /><span>Play in order</span></button><button className="collection-play-button" disabled={!filteredTracks.length} onClick={() => startPlayback(filteredTracks, true)}><Shuffle size={17} /><span>Shuffle</span></button><button className={`collection-play-button ${repeat !== 'off' ? 'active' : ''}`} onClick={cycleRepeat}><Repeat2 size={17} /><span>{repeat === 'one' ? 'Repeat one' : repeat === 'all' ? view === 'playlist' ? 'Repeat playlist' : 'Repeat collection' : 'No repeat'}</span></button>{view === 'playlist' && <button className="icon-button bordered playlist-delete" onClick={() => deletePlaylist(selectedPlaylist)} aria-label="Delete playlist"><Trash2 size={18} /></button>}</div></div>
               </section>
               {filteredTracks.length ? (
-                <section className="track-table"><div className="track-table-head"><span>#</span><span>Title</span><span>Album</span><span>Availability</span><span /><span><Clock3 size={15} /></span><span /></div>{filteredTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} active={current?.id === track.id} playing={playing} onPlay={() => playTrack(track, filteredTracks)} onFavorite={() => toggleFavorite(track)} onDownload={() => saveOffline(track)} onAdd={() => setModal({ type: 'add', track })} onDelete={() => deleteTrack(track)} />)}</section>
+                <section className="track-table"><div className="track-table-head"><span>#</span><span>Title</span><span>Album</span><span>Availability</span><span /><span><Clock3 size={15} /></span><span /></div>{filteredTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} active={current?.id === track.id} playing={playing} onPlay={() => playTrack(track, filteredTracks)} onFavorite={() => toggleFavorite(track)} onDownload={() => saveOffline(track)} onAdd={() => setModal({ type: 'add', track })} onDelete={() => deleteTrack(track)} onMore={() => openTrackActions(track, filteredTracks, view === 'playlist' ? selectedPlaylist : null)} />)}</section>
               ) : (
                 <EmptyState icon={view === 'favorites' ? Heart : view === 'offline' ? Download : Music2} title={search ? 'No matching music' : `No ${view === 'library' ? 'music' : view === 'playlist' ? 'tracks here' : view} yet`} text={search ? 'Try a different title, artist, or album.' : view === 'favorites' ? 'Tap the heart beside any track to keep it here.' : view === 'offline' ? 'Imported music is offline automatically. Artist-approved Jamendo downloads appear here too.' : 'Add audio files from this device to begin your collection.'} action={view === 'library' ? () => setModal({ type: 'upload' }) : null} actionLabel="Add music" />
               )}
@@ -1213,13 +1394,15 @@ function App() {
 
       {current && (
         <footer className="player-bar">
-          <div className="now-playing"><Cover track={current} size="player" /><div><strong>{current.title}</strong><span>{current.artist}</span></div><button className={`icon-button subtle favorite ${current.favorite ? 'selected' : ''}`} onClick={() => toggleFavorite(current)}><Heart size={17} fill={current.favorite ? 'currentColor' : 'none'} /></button></div>
-          <div className="player-center"><div className="player-controls"><button className={`icon-button ${shuffle ? 'control-active' : ''}`} onClick={() => setShuffle(!shuffle)}><Shuffle size={17} /></button><button className="icon-button" onClick={playPrevious}><SkipBack size={19} fill="currentColor" /></button><button className="main-play" onClick={() => setPlaying(!playing)}>{playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}</button><button className="icon-button" onClick={playNext}><SkipForward size={19} fill="currentColor" /></button><button className={`icon-button repeat-button ${repeat !== 'off' ? 'control-active' : ''}`} onClick={cycleRepeat}><Repeat2 size={17} />{repeat === 'one' && <sup>1</sup>}</button></div><div className="progress-row"><span>{formatTime(progress)}</span><input type="range" min="0" max={duration || 0} step="0.1" value={Math.min(progress, duration || 0)} onChange={(event) => { const nextTime = Number(event.target.value); if (current.source === 'youtube') youtubePlayerRef.current?.seekTo(nextTime, true); else audioRef.current.currentTime = nextTime; setProgress(nextTime); }} style={{ '--progress': `${duration ? progress / duration * 100 : 0}%` }} /><span>{formatTime(duration)}</span></div></div>
+          <div className="now-playing"><button className="now-playing-summary" onClick={openMobilePlayer} aria-label={`Open now playing: ${current.title}`}><Cover track={current} size="player" /><span className="now-playing-copy"><strong>{current.title}</strong><small>{current.artist || 'Unknown artist'}</small></span></button><button className={`icon-button subtle favorite ${current.favorite ? 'selected' : ''}`} onClick={() => toggleFavorite(current)} aria-label={current.favorite ? 'Remove from favorites' : 'Add to favorites'}><Heart size={17} fill={current.favorite ? 'currentColor' : 'none'} /></button></div>
+          <div className="player-center"><div className="player-controls"><button className={`icon-button ${shuffle ? 'control-active' : ''}`} onClick={toggleShuffle} aria-label="Shuffle" aria-pressed={shuffle}><Shuffle size={17} /></button><button className="icon-button" onClick={playPrevious} aria-label="Previous"><SkipBack size={19} fill="currentColor" /></button><button className="main-play" onClick={() => setPlaying(!playing)} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}</button><button className="icon-button" onClick={playNext} aria-label="Next"><SkipForward size={19} fill="currentColor" /></button><button className={`icon-button repeat-button ${repeat !== 'off' ? 'control-active' : ''}`} onClick={cycleRepeat} aria-label={repeat === 'one' ? 'Repeat one' : repeat === 'all' ? 'Repeat all' : 'Repeat off'}><Repeat2 size={17} />{repeat === 'one' && <sup>1</sup>}</button></div><div className="progress-row"><span>{formatTime(progress)}</span><input aria-label="Track position" type="range" min="0" max={duration || 0} step="0.1" value={Math.min(progress, duration || 0)} onChange={(event) => seekTo(Number(event.target.value))} style={{ '--progress': `${duration ? progress / duration * 100 : 0}%` }} /><span>{formatTime(duration)}</span></div></div>
           <div className="player-right"><button className={`icon-button ${queueOpen ? 'control-active' : ''}`} onClick={() => setQueueOpen(!queueOpen)}><ListMusic size={18} /></button><button className="icon-button" onClick={() => setMuted(!muted)}>{muted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}</button><input className="volume-slider" type="range" min="0" max="1" step="0.01" value={volume} onChange={(event) => setVolume(Number(event.target.value))} style={{ '--progress': `${volume * 100}%` }} /></div>
         </footer>
       )}
 
-      {queueOpen && <aside className="queue-drawer"><div className="queue-header"><div><p className="eyebrow">UP NEXT</p><h2>Play queue</h2></div><button className="icon-button" onClick={() => setQueueOpen(false)}><X size={19} /></button></div><div className="queue-now"><Cover track={current} size="queue" /><strong>{current?.title}</strong><span>{current?.artist}</span></div><div className="queue-list">{queue.slice(currentQueueIndex + 1).map((track, index) => <button key={`${track.id}-${index}`} onClick={() => { setCurrent(track); setPlaying(true); }}><Cover track={track} size="tiny" /><span><strong>{track.title}</strong><small>{track.artist}</small></span><MoreHorizontal size={17} /></button>)}</div>{currentQueueIndex === queue.length - 1 && <p className="queue-empty">That’s the end of the queue.</p>}</aside>}
+      {nowPlayingOpen && current && <MobileNowPlaying track={current} playing={playing} progress={progress} duration={duration} volume={volume} muted={muted} shuffle={shuffle} repeat={repeat} queue={queue} currentQueueIndex={currentQueueIndex} onClose={() => setNowPlayingOpen(false)} onTogglePlay={() => setPlaying(!playing)} onPrevious={playPrevious} onNext={playNext} onSeek={seekTo} onVolume={setVolume} onMute={() => setMuted(!muted)} onShuffle={toggleShuffle} onRepeat={cycleRepeat} onFavorite={() => toggleFavorite(current)} onAdd={() => { setNowPlayingOpen(false); setModal({ type: 'add', track: current }); }} onMore={() => { setNowPlayingOpen(false); openTrackActions(current, queue.length ? queue : [current], selectedPlaylist?.trackIds.includes(current.id) ? selectedPlaylist : null); }} onOpenQueue={openQueue} onSelectQueueTrack={(track) => { setCurrent(track); setPlaying(true); }} />}
+
+      {queueOpen && <><button className="queue-backdrop" onClick={() => setQueueOpen(false)} aria-label="Close queue" /><aside className="queue-drawer"><div className="queue-header"><div><p className="eyebrow">PLAY SESSION</p><h2>Queue</h2><span>{currentQueueIndex >= 0 ? `${currentQueueIndex + 1} of ${queue.length}` : `${queue.length} tracks`}</span></div><div>{queue.length > 1 && <button className="queue-clear" onClick={clearUpcomingQueue}>Clear upcoming</button>}<button className="icon-button" onClick={() => setQueueOpen(false)} aria-label="Close queue"><X size={19} /></button></div></div><div className="queue-list">{queue.map((track, index) => <button className={track.id === current?.id ? 'current' : ''} key={`${track.id}-${index}`} onClick={() => { setCurrent(track); setPlaying(true); }}><span className="queue-position">{track.id === current?.id && playing ? <Pause size={14} fill="currentColor" /> : index + 1}</span><Cover track={track} size="tiny" /><span><strong>{track.title}</strong><small>{track.artist || 'Unknown artist'}</small></span>{track.id === current?.id ? <span className="queue-playing">Playing</span> : <Play size={15} fill="currentColor" />}</button>)}</div>{!queue.length && <p className="queue-empty">Choose a track to start a queue.</p>}</aside></>}
 
       <nav className="mobile-nav"><button className={view === 'home' ? 'active' : ''} onClick={() => goTo('home')}><Home size={20} /><span>Home</span></button><button className={view === 'explore' || view === 'arabic' ? 'active' : ''} onClick={() => goTo(view === 'arabic' ? 'arabic' : 'explore')}><Compass size={20} /><span>{view === 'arabic' ? 'Classics' : 'Explore'}</span></button><button onClick={() => setModal({ type: 'youtube-download' })}><Download size={20} /><span>Download</span></button><button className={view === 'library' ? 'active' : ''} onClick={() => goTo('library')}><Library size={20} /><span>Library</span></button></nav>
 
@@ -1228,6 +1411,7 @@ function App() {
       {modal?.type === 'playlist' && <PlaylistModal onClose={() => setModal(null)} onCreate={createPlaylist} />}
       {modal?.type === 'add' && <AddToPlaylistModal track={modal.track} playlists={playlists} onClose={() => setModal(null)} onAdd={(playlist) => addToPlaylist(playlist, modal.track)} onNew={() => setModal({ type: 'playlistWithTrack', track: modal.track })} />}
       {modal?.type === 'playlistWithTrack' && <PlaylistModal onClose={() => setModal(null)} onCreate={(name) => createPlaylist(name, modal.track)} />}
+      {modal?.type === 'track-actions' && actionTrack && <TrackActionsModal track={actionTrack} stored={actionStoredTrack} active={current?.id === actionTrack.id} playlist={actionPlaylist} canMoveUp={actionPlaylistIndex > 0} canMoveDown={actionPlaylistIndex >= 0 && actionPlaylistIndex < actionPlaylist.trackIds.length - 1} onClose={() => setModal(null)} onPlay={() => { if (current?.id === actionTrack.id) { seekTo(0); setPlaying(true); } else playTrack(actionTrack, modal.list || [actionTrack]); setModal(null); }} onPlayNext={() => { playTrackNext(actionTrack); setModal(null); }} onQueue={() => { addTrackToQueue(actionTrack); setModal(null); }} onFavorite={() => { toggleFavorite(actionTrack); setModal(null); }} onAdd={() => setModal({ type: 'add', track: actionTrack })} onDownload={(actionTrack.source === 'youtube' || (actionTrack.source === 'jamendo' && actionTrack.downloadAllowed && !actionTrack.cachedBlob)) ? () => { if (actionTrack.source === 'youtube') setModal({ type: 'youtube-download', track: actionTrack }); else { saveOffline(actionTrack); setModal(null); } } : null} onRemoveFromPlaylist={() => removeFromPlaylist(actionPlaylist, actionTrack)} onMove={(direction) => movePlaylistTrack(actionPlaylist, actionTrack, direction)} onDelete={() => { setModal(null); deleteTrack(actionStoredTrack); }} />}
       {modal?.type === 'settings' && <SettingsModal onClose={() => setModal(null)} initialClientId={clientId} initialYoutubeKey={youtubeKey} onSave={saveSettings} storage={storage} youtubeServerManaged={Boolean(ENV_CONFIG.youtubeKey)} />}
       {toast && <div className={`toast ${toast.type}`}><span>{toast.type === 'success' ? <Check size={16} /> : <WifiOff size={16} />}</span>{toast.message}</div>}
       <input ref={fileInputRef} hidden type="file" multiple accept="audio/*" onChange={(event) => importFiles([...event.target.files])} />
