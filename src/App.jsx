@@ -466,6 +466,7 @@ function App() {
   const fileInputRef = useRef();
   const youtubePlayerRef = useRef(null);
   const searchTimerRef = useRef();
+  const youtubeSearchAbortRef = useRef(null);
   const youtubeDownloadAbortRef = useRef(null);
   const [tracks, setTracks] = useState([]);
   const [playlists, setPlaylists] = useState([]);
@@ -524,7 +525,10 @@ function App() {
     if (modal?.type !== 'youtube-download' && !youtubeDownloading) setYoutubeTask(null);
   }, [modal?.type, youtubeDownloading]);
 
-  useEffect(() => () => youtubeDownloadAbortRef.current?.abort(), []);
+  useEffect(() => () => {
+    youtubeSearchAbortRef.current?.abort();
+    youtubeDownloadAbortRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     if (!current) { setNowPlayingOpen(false); setQueueOpen(false); }
@@ -1145,19 +1149,27 @@ function App() {
 
   const searchYouTube = useCallback(async (term = '') => {
     if (!youtubeKey) return;
+    youtubeSearchAbortRef.current?.abort();
+    const controller = new AbortController();
+    youtubeSearchAbortRef.current = controller;
     setCatalogLoading(true);
     try {
       const params = new URLSearchParams({ region: ENV_CONFIG.youtubeRegion || navigator.language?.split('-')[1]?.toUpperCase() || 'US' });
       if (term.trim()) params.set('q', term.trim());
-      const response = await fetch(`/api/youtube/search?${params}`, { cache: 'no-store' });
+      const response = await fetch(`/api/youtube/search?${params}`, { cache: 'no-store', signal: controller.signal });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'YouTube search failed');
       setCatalogTracks(data.results || []);
     } catch (error) {
-      console.error(error);
-      notify('Could not connect to YouTube. Check the API key, quota, and connection.', 'error');
+      if (error.name === 'AbortError') return;
+      notify(error.message || 'Could not connect to YouTube. Please try again.', 'error');
       setCatalogTracks([]);
-    } finally { setCatalogLoading(false); }
+    } finally {
+      if (youtubeSearchAbortRef.current === controller) {
+        youtubeSearchAbortRef.current = null;
+        setCatalogLoading(false);
+      }
+    }
   }, [youtubeKey, notify]);
 
   const performSearch = useCallback(() => {
