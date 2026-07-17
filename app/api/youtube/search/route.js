@@ -31,12 +31,14 @@ export async function GET(request) {
   const canUseWorker = Boolean(worker && workerKey);
   let workerFailure = null;
 
-  if (!term && !key) return NextResponse.json({ results: [] });
+  if (!term && !key && !canUseWorker) return NextResponse.json({ results: [] });
 
-  // Text search is routed through the protected yt-dlp worker first. This avoids
-  // spending Google's expensive search quota on every keystroke.
-  if (term && canUseWorker) {
-    const workerTerm = /\b(music|song|audio|lyrics|official)\b/i.test(term) ? term : `${term} music`;
+  // Discovery and text search are routed through the protected yt-dlp worker
+  // first. This keeps normal browsing independent of Google's search quota.
+  if (canUseWorker) {
+    const workerTerm = !term
+      ? `popular music ${region}`
+      : /\b(music|song|audio|lyrics|official)\b/i.test(term) ? term : `${term} music`;
     const result = await searchWorker(worker, workerKey, workerTerm);
     if (result.ok) return NextResponse.json(result.data, { headers: { 'Cache-Control': 'no-store' } });
     workerFailure = result;
