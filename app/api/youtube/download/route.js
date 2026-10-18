@@ -1,40 +1,23 @@
-import { createHmac } from 'node:crypto';
-import { NextResponse } from 'next/server';
+import { mediaResponse } from '../../../../lib/media.mjs';
+import { audioFormat, youtubeSource } from '../../../../lib/youtube-input.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
-const YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be']);
-
-function isYoutubeUrl(value) {
+export async function POST(request) {
+  const origin = request.headers.get('origin');
+  if (origin && origin !== new URL(request.url).origin) return Response.json({ error: 'Open the download tool in Sonora to continue.' }, { status: 403 });
+  let source, format;
   try {
-    const parsed = new URL(value);
-    return ['http:', 'https:'].includes(parsed.protocol) && YOUTUBE_HOSTS.has(parsed.hostname.toLowerCase());
-  } catch {
-    return false;
-  }
-}
-
-export async function GET(request) {
-  const worker = process.env.DOWNLOADER_URL?.replace(/\/$/, '');
-  const secret = process.env.DOWNLOADER_API_KEY?.trim();
-  if (!worker || !secret) return NextResponse.json({ error: 'The audio conversion worker is not configured.' }, { status: 503 });
-  const incoming = new URL(request.url);
-  const source = incoming.searchParams.get('url') || '';
-  const format = incoming.searchParams.get('format') || 'mp3';
-  if (!isYoutubeUrl(source)) {
-    return NextResponse.json({ error: 'Only valid YouTube URLs are supported.' }, { status: 400 });
-  }
-  if (!['mp3', 'm4a', 'opus'].includes(format)) {
-    return NextResponse.json({ error: 'Unsupported audio format.' }, { status: 400 });
-  }
-
-  const expires = Math.floor(Date.now() / 1000) + 300;
-  const signature = createHmac('sha256', secret).update(`${expires}\n${source}\n${format}`).digest('hex');
-  const target = new URL(`${worker}/api/youtube/download`);
-  target.searchParams.set('url', source);
-  target.searchParams.set('format', format);
-  target.searchParams.set('expires', String(expires));
-  target.searchParams.set('signature', signature);
-  return NextResponse.redirect(target, 307);
+    if (Number(request.headers.get('content-length')) > 4096) throw new Error('The request is too large.');
+    const body = await request.json();
+    source = youtubeSource(body.url);
+    format = audioFormat(body.format || 'mp3');
+  } catch (error) { return Response.json({ error: error.message || 'Invalid download request.' }, { status: 400 }); }
+  if (process.env.VERCEL === '1') return Response.json({
+    error: 'YouTube downloads are available in the Sonora Android app. You can also import audio files on this device.',
+    code: 'ANDROID_DOWNLOAD_REQUIRED'
+  }, { status: 503 });
+  return mediaResponse(source, format, request.signal);
 }

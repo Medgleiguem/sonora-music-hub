@@ -1,97 +1,40 @@
-# Production deployment
+# Android-first free deployment
 
-Sonora uses two services:
+The user-approved free architecture now includes a native Android app alongside this Next.js PWA. The Android app downloads and converts on the phone; the hosted website offers its installer and file imports. Vercel conversion requests fail quickly with `ANDROID_DOWNLOAD_REQUIRED` because real YouTube requests from the hosting connection were refused. Local Next.js conversion remains available. See [Android build/use details](docs/android.md) and [current launch evidence](docs/vercel-launch.md).
 
-1. Render runs the private conversion worker.
-2. Vercel runs the Next.js PWA and issues signed worker URLs.
+The public Android installer is at https://sonora-music-hub-six.vercel.app/android and requires no Vercel login. It serves signed APKs, application source and SHA-256 checksums alongside the full music website. Build and sign Android first, then run `npm run package:android -- --public` to prepare ignored `public/downloads/` assets before deploying from the repository root. Those binary artifacts are deliberately excluded from Git; future website releases must prepare them again to retain the download page. CI does not deploy. Do not enable a clean-source automatic deployment without an equivalent release-artifact step.
 
-No database is needed for music. Songs remain on each user's device.
+The default `npm run package:android` still prepares the separate installer Build Output for preview/review. Never promote an installer-only deployment onto the main music website domain. Contributors can [build from public source](docs/android.md#build) without signing credentials or Vercel access.
 
-## Before deploying
+## Next.js hosting configuration
 
-1. Revoke any Vercel or Render token that was pasted into chat, logs, or screenshots.
-2. Put the project in a private GitHub repository.
-3. Generate one shared downloader secret:
+1. Import this repository as a **Next.js** project with the repository root as the root directory.
+2. Select **Node.js 22.x or 24.x** and enable **Fluid compute**. Use `npm ci` to install and `npm run build` to build. Do not select a static export.
+3. Add optional values from `.env.example`. A YouTube API key speeds up search but is not needed for conversion or the yt-dlp search fallback.
+4. Deploy. The build downloads pinned yt-dlp and installs FFmpeg; `next.config.mjs` includes both executables in the Node API bundles. No Python installation, Docker container, Render service, server database, or persistent disk is required.
+5. Verify search, local file imports, playback, storage recovery and offline reopen on the deployed origin. Vercel download requests intentionally return the Android alternative; use the native Android app for phone downloads.
 
-   ```bash
-   openssl rand -base64 48
-   ```
+## Existing Vercel + Render installations
 
-4. Keep that value private. Configure it as `DOWNLOADER_API_KEY` on both services.
+Deploy the new Next.js build to the **same existing origin** to keep access to the browser's IndexedDB library. A new domain or preview URL has a separate browser library.
 
-## 1. Deploy the Render worker
+`DOWNLOADER_URL`, `DOWNLOADER_API_KEY`, `ALLOWED_ORIGINS`, and worker port/host settings are no longer read by this app. Remove them from Vercel when convenient. Confirm the Android and browser flows before changing any old Render service. This code change does not delete or change any external service.
 
-1. In Render, create a new Blueprint from the GitHub repository.
-2. Render reads `render.yaml` and builds `Dockerfile`.
-3. Enter:
-   - `DOWNLOADER_API_KEY`: the shared secret.
-   - `ALLOWED_ORIGINS`: the expected production app origin. It can be corrected after Vercel assigns the final URL.
-   - `YT_DLP_PROXY`: optional trusted proxy URL if YouTube challenges Render's outbound IP.
-   - `YT_DLP_COOKIES_PATH`: optional `/etc/secrets/youtube-cookies.txt` when using a Render secret file instead.
-4. Use at least the Starter/always-on plan for dependable downloads.
-5. Wait for `/health` to return JSON with `"ok": true`.
-6. Copy the worker URL, such as `https://sonora-downloader.onrender.com`.
+Close old Sonora tabs and reopen after deployment so the service worker can activate the new shell. Do not clear site data to update the app: that would delete local music. Old open tabs use the previous download protocol until refreshed; a deployment while downloading can interrupt an in-flight request.
 
-The worker does not need a persistent disk. It deletes temporary media after streaming it.
+## Runtime design and limits
 
-If downloads report that YouTube is blocking the server, configure either `YT_DLP_PROXY` or a `youtube-cookies.txt` Render secret file. Never commit proxy credentials or YouTube cookies to Git.
+- The download Node route declares `maxDuration = 300`. It sends an immediate NDJSON status event and streams audio after conversion, avoiding buffering the complete file in a function response. Vercel's [body-size guidance](https://vercel.com/kb/guide/how-to-bypass-vercel-body-size-limit-serverless-functions) documents streaming for large responses.
+- The server sets a **260-second deadline** including transfer. Client requests stop after 285 seconds. Work that cannot finish within this budget fails visibly; streaming does not remove the execution limit. See [Vercel function limits](https://vercel.com/docs/functions/limitations).
+- Each invocation uses a unique `/tmp/sonora-*` directory. Cancellation and deadlines kill the process group; generator cleanup removes temporary media. Abrupt platform termination cannot run JavaScript cleanup, so no data in `/tmp` is treated as persistent.
+- Two conversions and four lookups are allowed per warm instance. These are resource guards, **not a global rate limit**: Vercel can create more instances. For an internet-facing service, configure Vercel Firewall rate limits or deployment protection to match your intended audience and budget. The app has no user accounts; its API is public on a public deployment. The Origin check is not authentication.
+- Finished videos up to 30 minutes / 96 MiB source / 64 MiB output; playlists up to 100 entries. On slower conversions even smaller files may reach the deadline. Large uninterrupted album-length conversions require a different execution model.
+- yt-dlp and FFmpeg are ordinary server executables, not a persistent worker. They are installed at build time and never self-update at runtime. Update the pinned release and hashes in `scripts/setup-media.mjs` when YouTube changes require a newer extractor. Official sources: [yt-dlp](https://github.com/yt-dlp/yt-dlp), [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static).
 
-## 2. Deploy the Vercel app
+## Troubleshooting
 
-Import the same GitHub repository into Vercel and set:
-
-```text
-DOWNLOADER_URL=https://your-render-service.onrender.com
-DOWNLOADER_API_KEY=the-same-shared-secret
-NEXT_PUBLIC_YOUTUBE_ENABLED=true
-YOUTUBE_REGION=US
-NEXT_PUBLIC_YOUTUBE_REGION=US
-```
-
-Optional:
-
-```text
-YOUTUBE_API_KEY=server-only-youtube-data-api-key
-NEXT_PUBLIC_JAMENDO_CLIENT_ID=jamendo-client-id
-```
-
-Deploy the production branch. Vercel should use:
-
-```text
-Build command: npm run build
-Install command: npm ci
-Framework: Next.js
-Node.js: 22
-```
-
-## 3. Finalize CORS
-
-In Render, set `ALLOWED_ORIGINS` to every exact app origin that should be allowed:
-
-```text
-https://your-project.vercel.app,https://music.yourdomain.com
-```
-
-Do not add paths or trailing slashes. Restart/redeploy the Render service after changing this value.
-
-Preview Vercel URLs are intentionally not allowed unless their exact origins are added. Production downloads should use the stable production or custom domain.
-
-## 4. Production acceptance test
-
-On a real phone:
-
-1. Open the production URL over HTTPS.
-2. Install Sonora to the home screen.
-3. Search for a video you are authorized to download.
-4. Tap **Download** directly on the Explorer result.
-5. Select MP3, keep the recovery-copy option enabled, and complete the rights confirmation.
-6. Confirm the track appears in Library and can be added to a playlist.
-7. Confirm the audio file also appears in Downloads/Files.
-8. Turn on airplane mode, fully close Sonora, reopen it, and play the track.
-9. Restart the phone and repeat the offline playback test.
-
-## Safe deployment access
-
-Do not paste API tokens into chat. Prefer connecting the private GitHub repository through the Vercel and Render dashboards.
-
-If command-line deployment is required, create fresh short-lived tokens and place them only in a local ignored file named `.deploy.env`. Never commit that file, and revoke the tokens after deployment.
+- **Tool download fails during build:** ensure npm install scripts are enabled for `ffmpeg-static`, and GitHub release downloads are accessible. The setup script checks SHA-256 and fails the build if the executable cannot be installed. It retries with curl if Node's download path fails.
+- **YouTube refuses a request:** a functioning build does not guarantee YouTube accepts a connection. The Android 1.2.0 live probes were refused too; changing platforms does not guarantee a fix. File imports remain available. This deployment uses no paid proxy or download API.
+- **Search quota exhausted:** provide a usable server-side `YOUTUBE_API_KEY` or remove it to use yt-dlp search.
+- **Storage full:** free device space or remove unwanted saved tracks, then retry. Completed playlist entries are retained.
+- **Offline startup shows an older UI:** connect once, close all Sonora tabs, and reopen. Preserve site data.

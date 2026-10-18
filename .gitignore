@@ -19,3 +19,23 @@ dist/
 .deploy.env
 youtube-cookies.txt
 *.cookies.txt
+
+bin/
+test-results/
+playwright-report/
+
+/mobile-dist/
+/mobile-artifacts/
+/public/downloads/
+/android/app/src/main/assets/downloader/
+
+# Signing material, local credentials and generated reports
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+keystore.properties
+cookies.txt
+coverage/
+*.log

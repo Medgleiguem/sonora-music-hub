@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/Medgleiguem/sonora-music-hub/security/advisories/new
+    about: Do not post exploits or credentials in public issues.
+  - name: Contributor setup and checks
+    url: https://github.com/Medgleiguem/sonora-music-hub/blob/main/CONTRIBUTING.md
+    about: Read the setup guide before opening a build or tooling issue.

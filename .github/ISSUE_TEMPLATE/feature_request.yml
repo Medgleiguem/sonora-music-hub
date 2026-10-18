@@ -1,0 +1,29 @@
+name: Feature or improvement
+description: Propose a focused improvement and explain the problem it solves.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe who is affected and when it happens.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain the smallest useful change. Mention any new service, dependency or permission it needs.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and tradeoffs
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you like to help?
+      options:
+        - I can help test or clarify the idea
+        - I would like to implement it after discussion
+        - I am sharing a suggestion

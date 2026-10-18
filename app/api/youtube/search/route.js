@@ -1,77 +1,44 @@
 import { NextResponse } from 'next/server';
+import { lookupYoutube } from '../../../../lib/media.mjs';
+import { publicMediaError } from '../../../../lib/youtube-input.mjs';
+
+export const maxDuration = 60;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-async function searchWorker(worker, workerKey, term) {
-  try {
-    const response = await fetch(`${worker}/api/youtube/search?q=${encodeURIComponent(term)}`, {
-      cache: 'no-store',
-      headers: { Authorization: `Bearer ${workerKey}` }
-    });
-    const text = await response.text();
-    let data;
-    try { data = JSON.parse(text); } catch { data = null; }
-    if (!response.ok) {
-      return { ok: false, status: response.status, error: data?.error || text || 'The YouTube search worker is unavailable.' };
-    }
-    return { ok: true, data: data || { results: [] } };
-  } catch (error) {
-    return { ok: false, status: 502, error: error.message || 'The YouTube search worker is unavailable.' };
-  }
-}
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const term = searchParams.get('q')?.trim() || '';
   const region = (searchParams.get('region') || process.env.YOUTUBE_REGION || 'US').toUpperCase();
   const key = process.env.YOUTUBE_API_KEY?.trim();
-  const worker = process.env.DOWNLOADER_URL?.replace(/\/$/, '');
-  const workerKey = process.env.DOWNLOADER_API_KEY?.trim();
-  const canUseWorker = Boolean(worker && workerKey);
-  let workerFailure = null;
-
-  if (!term && !key && !canUseWorker) return NextResponse.json({ results: [] });
-
-  // Discovery and text search are routed through the protected yt-dlp worker
-  // first. This keeps normal browsing independent of Google's search quota.
-  if (canUseWorker) {
-    const workerTerm = !term
-      ? `popular music ${region}`
-      : /\b(music|song|audio|lyrics|official)\b/i.test(term) ? term : `${term} music`;
-    const result = await searchWorker(worker, workerKey, workerTerm);
-    if (result.ok) return NextResponse.json(result.data, { headers: { 'Cache-Control': 'no-store' } });
-    workerFailure = result;
-  }
-
+  if (term.length > 200 || !/^[A-Z]{2}$/.test(region)) return NextResponse.json({ error: 'Enter a search of up to 200 characters and a two-letter region.' }, { status: 400 });
   if (!key) {
-    if (workerFailure) return NextResponse.json({ error: workerFailure.error }, { status: workerFailure.status });
-    return NextResponse.json({ error: 'Configure YOUTUBE_API_KEY or the protected downloader worker.' }, { status: 503 });
+    try {
+      const query = term || `popular music ${region}`;
+      const data = await lookupYoutube(`ytsearch24:${query}`, { signal: request.signal });
+      return NextResponse.json({ results: data.entries }, { headers: { 'Cache-Control': 'private, max-age=60' } });
+    } catch (error) { return NextResponse.json({ error: publicMediaError(error) }, { status: 502 }); }
   }
 
   try {
     const params = new URLSearchParams({ key, part: 'snippet', maxResults: '24', type: 'video', videoCategoryId: '10' });
     if (term) params.set('q', term);
     else { params.set('order', 'viewCount'); params.set('regionCode', region); }
-    const response = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`, { next: { revalidate: term ? 0 : 300 } });
+    const response = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`, { signal: AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]), next: { revalidate: term ? 0 : 300 } });
     const data = await response.json();
     if (!response.ok) {
       const quotaLimited = response.status === 403 || response.status === 429;
-      if (term && canUseWorker && !workerFailure && quotaLimited) {
-        const workerTerm = /\b(music|song|audio|lyrics|official)\b/i.test(term) ? term : `${term} music`;
-        const fallback = await searchWorker(worker, workerKey, workerTerm);
-        if (fallback.ok) return NextResponse.json(fallback.data, { headers: { 'Cache-Control': 'no-store' } });
-      }
       const message = quotaLimited
         ? 'YouTube search quota is temporarily exhausted. Please try again later.'
         : data.error?.message || 'YouTube search failed.';
-      return NextResponse.json({ error: workerFailure?.error || message, code: quotaLimited ? 'YOUTUBE_QUOTA_EXHAUSTED' : 'YOUTUBE_SEARCH_FAILED' }, { status: response.status });
+      return NextResponse.json({ error: message, code: quotaLimited ? 'YOUTUBE_QUOTA_EXHAUSTED' : 'YOUTUBE_SEARCH_FAILED' }, { status: response.status });
     }
 
     const videoIds = data.items.map((item) => item.id?.videoId).filter(Boolean);
     if (!videoIds.length) return NextResponse.json({ results: [] });
     const detailParams = new URLSearchParams({ key, part: 'contentDetails,status', id: videoIds.join(',') });
-    const detailResponse = await fetch(`https://www.googleapis.com/youtube/v3/videos?${detailParams}`, { cache: 'no-store' });
+    const detailResponse = await fetch(`https://www.googleapis.com/youtube/v3/videos?${detailParams}`, { cache: 'no-store', signal: AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]) });
     const details = await detailResponse.json();
     const detailMap = new Map((details.items || []).map((item) => [item.id, item]));
     const results = data.items.map((item) => {
@@ -91,7 +58,7 @@ export async function GET(request) {
     }).filter((item) => detailMap.get(item.externalId)?.status?.embeddable !== false);
     return NextResponse.json({ results }, { headers: { 'Cache-Control': term ? 'no-store' : 'public, s-maxage=300, stale-while-revalidate=600' } });
   } catch (error) {
-    return NextResponse.json({ error: error.message || 'YouTube search failed.' }, { status: 502 });
+    return NextResponse.json({ error: 'YouTube search is unavailable. Please try again.' }, { status: 502 });
   }
 }
 

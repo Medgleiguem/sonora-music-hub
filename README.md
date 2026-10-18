@@ -1,103 +1,156 @@
+<p align="center">
+  <img src="public/favicon.svg" width="72" height="72" alt="Sonora logo">
+</p>
+
 # Sonora
 
-Sonora is a mobile-first, local-first music PWA built with Next.js. It can search YouTube, convert authorized videos or playlists to MP3/M4A/Opus through a private worker, save the result on the current device, import local audio and folders, build playlists, and play downloaded music offline.
+**Your music, on your device.** An open-source Android music app and web player with a shared React interface, an offline library, and native Android background playback.
 
-## Architecture
+[![CI](https://github.com/Medgleiguem/sonora-music-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/Medgleiguem/sonora-music-hub/actions/workflows/ci.yml)
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
+[![Android 10+](https://img.shields.io/badge/Android-10%2B-3ddc84.svg)](docs/android.md)
 
-- **Next.js app on Vercel:** UI, protected search proxy, and short-lived signed download URLs.
-- **Conversion worker on Render:** `yt-dlp` and FFmpeg convert one video at a time and stream the result directly to the browser.
-- **On-device library:** audio blobs, metadata, favorites, and playlists live in IndexedDB.
-- **Recovery copy:** YouTube downloads can also be written to the phone's Downloads/Files area.
-- **PWA shell:** the service worker caches the app UI, but intentionally never caches API or audio-conversion responses.
+[Download Android](https://sonora-music-hub-six.vercel.app/android) · [Try the web player](https://sonora-music-hub-six.vercel.app) · [Build from source](#build-the-android-app) · [Contribute](CONTRIBUTING.md) · [Report a bug](https://github.com/Medgleiguem/sonora-music-hub/issues/new/choose)
 
-The Render filesystem is used only for temporary conversion files, which are deleted after each request. A server database and persistent Render disk are not required.
+## What you can do
 
-## Local development
+- Import audio files and keep a device-local library with playlists and favorites.
+- Listen offline to saved tracks, with queue controls, repeat, shuffle and seeking.
+- Keep Android audio playing when the screen turns off or you switch apps. Media3 owns playback and prepared queue items independently of the WebView.
+- Discover music through YouTube search and an optional Jamendo catalog.
+- Attempt on-device YouTube audio streaming and MP3, M4A or Opus downloads, with progress, cancellation and recovery controls.
+- Use the responsive web player as an installable PWA, including local imports and offline playback.
 
-Requirements:
+**Current status: active development, version 1.2.1.** YouTube streaming and downloading are experimental and remain unreliable. In the latest emulator tests, YouTube refused both Julia Boutros “Moqawem” and a second public clip. Cold search took about 12 seconds; the same cached query took 51 ms. These results are documented limitations, not a claim that downloads or first searches are fixed. Contributions that improve reproducibility, reliability and performance are especially welcome.
 
-- Node.js 22+
-- npm 10+
-- FFmpeg
-- `yt-dlp`
+## Platform support
 
-Create local configuration:
+| Capability | Android app | Web / iPhone browser |
+| --- | --- | --- |
+| Local imports, playlists, favorites, offline library | Supported | Supported; browser storage rules apply |
+| Background audio and Android media controls | Native Media3 service | Depends on browser and operating system |
+| YouTube discovery | On-device lookup | Server Data API or yt-dlp lookup |
+| YouTube audio streaming / conversion | Experimental on-device resolver | Official visible player; local Node conversion on compatible hosts |
+| Conversion on the public Vercel demo | Uses the separate Android app | Intentionally unavailable; import files instead |
 
-```bash
-cp .env.example .env.local
-```
+There is no account or cloud library. Browser and Android installations have separate libraries. Sonora is not affiliated with YouTube, Spotify or Jamendo. Only download or redistribute content you have the right to use.
 
-Set a long random value for `DOWNLOADER_API_KEY`, then run the app and worker in separate terminals:
+## Start the web app
 
-```bash
+Requirements: **Node.js 22+**, **npm 10+**, and Linux x64/arm64, macOS or Windows x64. Use the Node version in [.nvmrc](.nvmrc) when contributing.
+
+```sh
+git clone https://github.com/Medgleiguem/sonora-music-hub.git
+cd sonora-music-hub
 npm ci
+cp .env.example .env.local
 npm run dev
 ```
 
-```bash
-npm run downloader
+Open [localhost:3000](http://localhost:3000). In Windows PowerShell, use `Copy-Item .env.example .env.local` for the copy step. All configuration is optional for local imports and playback.
+
+FFmpeg installs with npm. The first dev/build command downloads a pinned, SHA-256-verified yt-dlp executable from its official release. Install scripts and access to npm and GitHub release assets must be available. The standalone server executable includes Python; Node supplies its JavaScript runtime.
+
+For production:
+
+```sh
+npm run build
+npm start
 ```
 
-Open `http://localhost:3000`.
+See [deployment guidance](DEPLOYMENT.md) before hosting a public instance. A successful build does not guarantee that YouTube accepts the host's connection.
 
-## Environment variables
+## Build the Android app
 
-### Vercel
+Requires **Android 10+** to run. To build, install a full **JDK 21**, **Android SDK platform 36**, and **SDK build tools 36.0.0**, and accept the SDK licenses. Set `ANDROID_HOME` or configure `sdk.dir` in the ignored `android/local.properties` file. Run these commands after `npm ci`:
 
-- `DOWNLOADER_URL`: public HTTPS URL of the Render worker, without a trailing slash.
-- `DOWNLOADER_API_KEY`: the same long random secret configured on Render.
-- `NEXT_PUBLIC_YOUTUBE_ENABLED=true`: enables the YouTube discovery UI.
-- `YOUTUBE_API_KEY`: optional server-only YouTube Data API v3 key. Without it, search falls back to the protected Render worker.
-- `YOUTUBE_REGION`: optional two-letter search region, such as `US`.
-- `NEXT_PUBLIC_YOUTUBE_REGION`: optional matching browser default.
-- `NEXT_PUBLIC_JAMENDO_CLIENT_ID`: optional independent-music catalog.
+```sh
+npm run build:mobile
+cd android
+./gradlew :app:assembleDebug
+```
 
-### Render
+On Windows, use `gradlew.bat`. Debug APKs are produced in `android/app/build/outputs/apk/debug/`: choose **arm64-v8a** for most modern phones, **armeabi-v7a** for supported older devices, or **x86_64** for an emulator. With an emulator connected:
 
-- `DOWNLOADER_API_KEY`: exactly the same secret used on Vercel.
-- `ALLOWED_ORIGINS`: exact comma-separated Vercel/custom-domain origins, for example `https://sonora.example.com,https://sonora.vercel.app`.
-- `YT_DLP_PATH=yt-dlp`: already supplied by `render.yaml`.
-- `YT_DLP_PROXY`: optional trusted proxy URL used only by the server-side yt-dlp process.
-- `YT_DLP_COOKIES_PATH`: optional path to a private Netscape-format cookies file, such as `/etc/secrets/youtube-cookies.txt` on Render.
-- `PLAYLIST_MAX_ITEMS=100`: optional maximum number of tracks Sonora reads from a pasted YouTube playlist (1–250). Playlist tracks are converted sequentially so completed tracks remain saved if one conversion fails or the user cancels.
+```sh
+adb install -r app/build/outputs/apk/debug/app-x86_64-debug.apk
+```
 
-Never prefix private keys with `NEXT_PUBLIC_`. Never commit `.env` files.
+Contributor builds use a local debug key. They cannot update a maintainer-signed installation; use an emulator or a separate device to avoid uninstalling an app containing your music. Release keys are never included in this repository. The [public Android installer](https://sonora-music-hub-six.vercel.app/android) provides maintainer-signed APKs, checksums and application source without a Vercel login. Building from source also requires no Vercel account.
 
-Some hosting-provider IP ranges are challenged by YouTube even when yt-dlp is fully up to date. For a personal production deployment, prefer a reputable static residential proxy. A dedicated throwaway YouTube account exported to a Render secret file is a fallback, but YouTube can invalidate or restrict that account.
+[Android documentation](docs/android.md) covers signing, architecture splits, playback limits, device tests and dependency sources.
 
-## Production deployment
+## Configuration
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full Vercel + Render sequence.
+Copy [.env.example](.env.example); keep real values out of Git.
 
-The repository includes:
+| Variable | Purpose |
+| --- | --- |
+| `YOUTUBE_API_KEY` | Optional server-only YouTube Data API key for web search; otherwise yt-dlp handles lookup |
+| `YOUTUBE_REGION` / `NEXT_PUBLIC_YOUTUBE_REGION` | Two-letter discovery region, default `US` |
+| `NEXT_PUBLIC_YOUTUBE_ENABLED` | Set `false` to hide YouTube discovery |
+| `NEXT_PUBLIC_JAMENDO_CLIENT_ID` | Optional public client ID for independent music discovery |
+| `PLAYLIST_MAX_ITEMS` | Server playlist lookup cap, 1–100; default 100 |
+| `YT_DLP_PATH` / `FFMPEG_PATH` | Optional absolute server executable overrides |
+| `YT_DLP_PROXY` / `YT_DLP_COOKIES_PATH` | Optional private server-side configuration; neither is required or bundled with Android |
 
-- `Dockerfile` for the conversion worker
-- `render.yaml` Render Blueprint
-- `vercel.json` Vercel configuration
-- `/health` worker health check
+`NEXT_PUBLIC_` values are included in client bundles. Never use that prefix for private API keys, cookies or credentials. Changing mobile public configuration requires rebuilding the app.
 
-Use a paid always-on Render web service if reliable downloads are required. A sleeping/free instance adds cold-start delays and cannot provide an always-ready production experience.
+## Development and tests
 
-## Offline storage and recovery
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the Next.js development server |
+| `npm test` | Run Node tests, including real FFmpeg encode/decode checks |
+| `npm run build` | Build the production web app |
+| `npm run test:browser` | Run Playwright browser regressions |
+| `npm run build:mobile` | Bundle the Android UI and sync Capacitor |
+| `npm run build:android` | Build the mobile bundle and Android debug APKs |
+| `npm run package:android` | Package an already signed release and source archive |
 
-When audio is imported or downloaded, Sonora asks the browser for persistent storage and saves the audio in IndexedDB. Installed PWA playback works without internet after the app shell has been opened once and the tracks have finished saving.
+```sh
+npm test
+npx playwright install chromium
+npm run build
+PLAYWRIGHT_PRODUCTION=1 npm run test:browser
+```
 
-Browser storage alone cannot truthfully guarantee that a file is impossible to lose. Clearing site data, uninstalling a browser/PWA, an operating-system reset, or losing the phone can remove IndexedDB. Keep **“Also keep a recovery copy in Downloads/Files”** enabled for converted tracks. Those physical files can be imported back into Sonora later.
+The last command uses POSIX environment syntax; in PowerShell, set `$env:PLAYWRIGHT_PRODUCTION = '1'` before running the test command. Browser tests use generated audio and stubbed upstream responses. They verify app behavior without a YouTube account, but **do not prove live YouTube download success**. Separate Android live probes report actual upstream failures.
 
-For the safest phone setup:
+CI runs Node tests, a production build, browser regressions, dependency auditing, and Android JVM tests/debug compilation without signing keys or production secrets. See [CONTRIBUTING.md](CONTRIBUTING.md) for focused checks and the PR process.
 
-1. Install Sonora to the home screen.
-2. Keep recovery copies enabled.
-3. Do not clear Sonora/browser site storage.
-4. Include the phone's Downloads/Files folder in the device's normal cloud or computer backup.
+## How it fits together
 
-## Security and limits
+| Path | Responsibility |
+| --- | --- |
+| `src/` | Shared React interface, IndexedDB library and native bridge clients |
+| `app/` | Next.js pages and same-origin search/download routes |
+| `lib/` | Server input validation, subprocess control and media conversion |
+| `android/` | Capacitor project, Media3 playback service and on-device extraction |
+| `mobile/`, `scripts/` | Mobile entry point, pinned tool setup and release packaging |
+| `tests/` | Node, Playwright and emulator workflows |
+| `docs/` | Architecture, Android build notes and release evidence |
 
-- Search requests to the worker require a bearer secret.
-- Download requests use five-minute HMAC-signed URLs.
-- Worker CORS is restricted to configured app origins.
-- Only recognized YouTube hosts and MP3/M4A/Opus output formats are accepted.
-- Individual downloads are limited to 200 MB, playlists are capped at `PLAYLIST_MAX_ITEMS`, and two simultaneous conversions run per worker instance.
-- Temporary conversion files are deleted after the response closes.
+Read the [architecture overview](docs/architecture.md), [1.2.1 release notes](docs/android-release-1.2.1.md) and [changelog](CHANGELOG.md) for design details and current limits.
 
-Use the downloader only for content you own or have permission to save, and comply with applicable terms and laws.
+## Storage and known limits
+
+Audio and library metadata are stored on the current device in IndexedDB. Android stages private native playback copies while preserving the originals, so first playback uses extra storage. Only prepared items are guaranteed to continue if the Activity is destroyed during staging. Force-stop or OS process death stops playback; process-death queue restoration is not implemented.
+
+Native queues contain at most 500 items; playback copies are capped at 256 MiB per file. Conversion accepts finished videos up to 30 minutes, with a 96 MiB source cap, 64 MiB output cap and 260-second deadline. Playlist downloads process up to 100 entries sequentially. These limits do not guarantee every video will work.
+
+Clearing app/site data or uninstalling can delete your library. Browser storage can also be evicted. Keep independent copies of music you want to preserve. No cross-device sync is implemented. Physical Samsung A35, Bluetooth hardware and phone-call interruption remain unverified in the current release.
+
+## Contribute
+
+Bug reports, accessibility improvements, documentation, tests and focused fixes are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), browse [open issues](https://github.com/Medgleiguem/sonora-music-hub/issues), or propose an improvement with the issue templates. Agree on larger changes before implementation so the work fits the project.
+
+Please follow the [Code of Conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately through the [security policy](SECURITY.md).
+
+Created by **[Med Gleiguem](https://github.com/Medgleiguem)**, with contributions welcome from the community.
+
+## License and acknowledgments
+
+Sonora's application code is licensed under **[GNU GPL version 3 only](LICENSE)**. Contributions are accepted under the same license; no contributor license agreement is required.
+
+Built with React, Next.js, Capacitor, AndroidX Media3, yt-dlp, youtubedl-android, FFmpeg, idb, jsmediatags and Lucide. Third-party code retains its original licenses. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for licenses and source/build references, especially when distributing APKs.

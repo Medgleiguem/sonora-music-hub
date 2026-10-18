@@ -1,43 +1,17 @@
-import { createHmac } from 'node:crypto';
-import { NextResponse } from 'next/server';
-
+import { lookupYoutube } from '../../../../lib/media.mjs';
+import { youtubeSource, publicMediaError } from '../../../../lib/youtube-input.mjs';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be']);
-
-function isYoutubeUrl(value) {
-  try {
-    const parsed = new URL(value);
-    return ['http:', 'https:'].includes(parsed.protocol) && YOUTUBE_HOSTS.has(parsed.hostname.toLowerCase());
-  } catch {
-    return false;
-  }
-}
-
-function isPlaylistUrl(value) {
-  try {
-    const parsed = new URL(value);
-    return parsed.pathname === '/playlist' || parsed.searchParams.has('list');
-  } catch {
-    return false;
-  }
-}
-
+export const maxDuration = 60;
 export async function GET(request) {
-  const worker = process.env.DOWNLOADER_URL?.replace(/\/$/, '');
-  const secret = process.env.DOWNLOADER_API_KEY?.trim();
-  const source = new URL(request.url).searchParams.get('url') || '';
-  if (!worker || !secret) return NextResponse.json({ error: 'The audio conversion worker is not configured.' }, { status: 503 });
-  if (!isYoutubeUrl(source) || !isPlaylistUrl(source)) {
-    return NextResponse.json({ error: 'Paste a valid YouTube playlist URL.' }, { status: 400 });
-  }
-
-  const expires = Math.floor(Date.now() / 1000) + 300;
-  const signature = createHmac('sha256', secret).update(`${expires}\n${source}\nplaylist`).digest('hex');
-  const target = new URL(`${worker}/api/youtube/playlist`);
-  target.searchParams.set('url', source);
-  target.searchParams.set('expires', String(expires));
-  target.searchParams.set('signature', signature);
-  return NextResponse.redirect(target, 307);
+  let source;
+  try { source = youtubeSource(new URL(request.url).searchParams.get('url') || '', true); }
+  catch (error) { return Response.json({ error: error.message }, { status: 400 }); }
+  try {
+    const configured = Number(process.env.PLAYLIST_MAX_ITEMS || 100);
+    const limit = Number.isFinite(configured) ? Math.min(100, Math.max(1, Math.floor(configured))) : 100;
+    const data = await lookupYoutube(source, { signal: request.signal, limit });
+    if (!data.entries.length) return Response.json({ error: 'This playlist has no available videos.' }, { status: 404 });
+    return Response.json(data, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) { return Response.json({ error: publicMediaError(error) }, { status: 502 }); }
 }

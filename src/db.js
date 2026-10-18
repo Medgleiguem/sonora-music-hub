@@ -1,17 +1,22 @@
 import { openDB } from 'idb';
 
-const dbPromise = typeof indexedDB === 'undefined' ? null : openDB('sonora-music', 1, {
-  upgrade(db) {
-    const tracks = db.createObjectStore('tracks', { keyPath: 'id' });
-    tracks.createIndex('addedAt', 'addedAt');
-    tracks.createIndex('favorite', 'favorite');
-    db.createObjectStore('playlists', { keyPath: 'id' });
-    db.createObjectStore('settings', { keyPath: 'key' });
-  }
-});
+let dbPromise;
 
 async function getDb() {
-  if (!dbPromise) throw new Error('Sonora storage is only available in a browser.');
+  if (typeof indexedDB === 'undefined') throw new Error('Device storage is unavailable. Open Sonora in a browser with site storage enabled.');
+  if (!dbPromise) {
+    dbPromise = openDB('sonora-music', 1, {
+      upgrade(db) {
+        const tracks = db.createObjectStore('tracks', { keyPath: 'id' });
+        tracks.createIndex('addedAt', 'addedAt');
+        tracks.createIndex('favorite', 'favorite');
+        db.createObjectStore('playlists', { keyPath: 'id' });
+        db.createObjectStore('settings', { keyPath: 'key' });
+      },
+      blocking() { dbPromise?.then((db) => db.close()).catch(() => {}); dbPromise = null; },
+      terminated() { dbPromise = null; }
+    }).catch((error) => { dbPromise = null; throw error; });
+  }
   return dbPromise;
 }
 
@@ -63,10 +68,10 @@ export async function setSetting(key, value) {
 export async function getStorageEstimate() {
   if (!navigator.storage?.estimate) return null;
   const [estimate, persisted] = await Promise.all([
-    navigator.storage.estimate(),
+    navigator.storage.estimate().catch(() => null),
     navigator.storage.persisted?.().catch(() => false) ?? false
   ]);
-  return { ...estimate, persisted };
+  return estimate ? { ...estimate, persisted } : null;
 }
 
 export async function requestPersistentStorage() {

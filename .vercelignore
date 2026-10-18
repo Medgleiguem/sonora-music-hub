@@ -11,3 +11,15 @@ node_modules
 npm-debug.log*
 youtube-cookies.txt
 *.cookies.txt
+
+bin
+test-results
+playwright-report
+tests
+
+.deploy.env
+
+android
+mobile
+mobile-dist
+mobile-artifacts

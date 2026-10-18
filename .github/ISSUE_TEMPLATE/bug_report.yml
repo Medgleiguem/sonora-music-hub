@@ -1,0 +1,49 @@
+name: Bug report
+description: Report a reproducible problem with playback, search, downloads or the interface.
+body:
+  - type: markdown
+    attributes:
+      value: Please search existing issues first. Do not include keys, cookies, private audio or signed media URLs. Report security vulnerabilities through the Security tab.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where does it happen?
+      options:
+        - Android app
+        - Web app / installed PWA
+        - Local build / developer tooling
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: 1.2.0, or a Git commit ID
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device, OS and browser
+      placeholder: Samsung A35, Android version; or browser name/version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include a public video URL for a download problem if you can share it. For search latency, say whether it was the first or a repeated search.
+      placeholder: Describe the steps and exact error wording.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, timings or screenshots
+      description: Optional. Redact credentials, account data and signed media URLs before attaching anything.
