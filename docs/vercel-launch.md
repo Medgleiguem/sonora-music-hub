@@ -2,6 +2,24 @@
 
 Source-publication update, 2026-10-18: the owner approved open-source publication under GPL-3.0. References below to private source or missing publication approval describe historical release conditions. The public source and contribution policy are now defined in the root README, LICENSE and CONTRIBUTING files. Existing historical APK installer previews remain protected; version 1.2.1 adds an owner-authorized public installer on the main website.
 
+## Android 1.2.1 and public source — 2026-10-18
+
+- Public website: https://sonora-music-hub-six.vercel.app
+- Shareable Android installer: https://sonora-music-hub-six.vercel.app/android — redirects to `/downloads/index.html`; no Vercel login required.
+- Promoted deployment: `dpl_GHJnNxEJrBN8DeGCr38kLjQUYYCA`, https://sonora-music-cm1cbahc0-meds-projects-9af78741.vercel.app
+- Public GPL-3.0 application source: https://github.com/Medgleiguem/sonora-music-hub, release tag `v1.2.1` at `8c6d9744390b15d02ab013ec964c790ad5d9c04c`.
+- Previous public website retained for rollback: `dpl_HpXgkG7KHwaMptgg6SZdQSawq23W`. Its installer link points to the older protected preview.
+
+The owner explicitly approved public source publication, GPL-3.0 and a public Vercel installer. The full website is deployed from the root; it retains the music app and adds signed APKs, application source and checksums under `/downloads/`. `npm run package:android -- --public` prepares the ignored release files. They must be prepared again for future website deployments. No clean-source Git auto-deployment is connected. The mobile bundler excludes website download artifacts to prevent nesting an old APK inside a new one.
+
+An unauthenticated full download of the live arm64 APK matched the signed local release byte for byte: 72,617,927 bytes, SHA-256 `850a50180b45031048c3c3c9a116372562944827acaac8cd9eb1d01d9e5a38a6`. Arm32 SHA-256: `00d975abd0d494d1332f5beb49fb0db80898242efe8a495d302792f5091b6c43`. Application source archive SHA-256: `6bc8ffc15541008822acbbfbf3f270b2bc698f130a6cf405e83be850fee6c2a7`. The hosted checksum manifest matches the release. VersionCode 4 retains the original signing certificate, and the APK contains “Made by Med Gleiguem”. Historical installer previews remain protected; the public domain above is the shareable link.
+
+Verification: 27 Node tests passed, including a cache regression that fails against the old service worker. Clean-source installation, web/mobile production builds, 18 local browser checks and Android JVM/debug builds passed. Both GitHub CI jobs passed on the release code with Node 22/JDK 21. The first runner failed because `sdkmanager` was not on PATH; the corrected workflow uses its installed absolute SDK location. Twelve staged and twelve anonymous post-promotion browser checks passed. A real-browser check also verified the installer redirect, credited page, APK content headers and offline music-app reopen after visiting the installer. The service worker bypasses `/android` and `/downloads/` and uses a separate v5 shell cache.
+
+Full Git-history and publishable-source Gitleaks scans found no leaks; known private configuration values were checked separately without logging their contents. GitHub detects the license, README and contribution/community files. Private vulnerability reporting, secret scanning and push protection are enabled. Contributor PRs require the web/Android checks, resolved conversations and maintainer review; owner administration access is retained. No signing key, environment file, user music or generated APK is committed to Git.
+
+The author credit was inspected at 320, 412, 768, 900 and 1440 pixels. Native playback/extraction behavior is unchanged from 1.2: YouTube refusals for “Moqawem” remain unresolved; physical A35, Bluetooth hardware and calls remain unverified. See [1.2.1 notes](android-release-1.2.1.md).
+
 ## Android 1.2.0 — 2026-10-18
 
 - Protected installer/source preview: `dpl_GE7bzJvedGBA9grPs2t5Xom54CCH`, https://sonora-music-px0engvor-meds-projects-9af78741.vercel.app
