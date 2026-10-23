@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b0b0c">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Sonora — Starting your Android download</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#0b0b0c;color:#f1f1eb;font:16px/1.65 system-ui}
+    main{max-width:620px;margin:auto;padding:48px 24px 64px}small{color:#bded68}
+    h1{font-size:clamp(32px,7vw,48px);line-height:1.1;letter-spacing:-1.5px;margin:20px 0}
+    p{color:#b5b5b9}a{color:#c0f558}.install{display:block;padding:17px 22px;margin:28px 0;background:#bbf34b;border-radius:14px;color:#14170e;text-decoration:none;font-weight:750;text-align:center}
+    a:focus-visible{outline:3px solid #f1f1eb;outline-offset:4px}
+  </style>
+</head>
+<body>
+  <main>
+    <small>SONORA FOR {{ANDROID_LABEL}}</small>
+    <h1>Starting your download…</h1>
+    <p>Your Android installer should download automatically. If it doesn’t start, tap the button below.</p>
+    <a id="download" class="install" href="./sonora-android-{{ARCH}}.apk" download>Download for {{ANDROID_LABEL}}</a>
+    <p>Open the downloaded APK on your phone and tap Install or Update. Install over your existing app to keep your library.</p>
+    <p><a href="./index.html">Back to installer choices</a></p>
+  </main>
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    // Start independently of analytics, including when its script is blocked.
+    var autoStart = setTimeout(function () { document.getElementById('download').click(); }, 800);
+    document.getElementById('download').addEventListener('click', function () { clearTimeout(autoStart); });
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>

@@ -4,7 +4,7 @@ Sonora now bundles its existing React interface in Capacitor and performs YouTub
 
 ## Install and use
 
-Requires Android 10 or newer. Most current phones use the **arm64-v8a** APK; **armeabi-v7a** is supplied for older 32-bit phones. The x86_64 build is for emulator validation. Install the signed APK through Android's normal installer, then open Sonora. A Play Store account is not required for direct installation.
+Requires Android 10 or newer and an up-to-date Android System WebView (Chrome 110 or newer). The download page offers complete **arm64-v8a** (about 73 MB) and **armeabi-v7a** (about 66 MB) installers. Choose 64-bit ARM for most current phones; if Android rejects it as incompatible, try 32-bit ARM. A larger universal APK and an x86_64 APK are also generated locally for validation, but are not served by the website. A 64-bit processor can run a 32-bit Android OS, so the phone model alone is not a reliable installer selector. Android versions below 10 and 32-bit Intel are not supported. Install the signed APK through Android's normal installer, then open Sonora. A Play Store account is not required for direct installation.
 
 Tap **Download**, paste a YouTube video or playlist URL, choose MP3, M4A or Opus, and save. Finished tracks appear in **Library** and **Offline**. The optional recovery copy is written to **Downloads/Sonora** without broad storage permissions. Use content you own or have permission to save.
 
@@ -30,11 +30,11 @@ cd android
 ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
 ```
 
-Version **1.2.1** uses Android versionCode **4**. Updates use the existing signing key and preserve the private library; do not uninstall to update.
+Version **1.2.2** uses Android versionCode **5**. Updates use the existing signing key and preserve the private library; do not uninstall to update.
 
 The build pins Capacitor Android/core 8.5.1, CLI 8.4.3, Gradle 8.14, AGP 8.13.0, and `youtubedl-android` library/FFmpeg 0.18.1. The native library supplies Python, QuickJS and FFmpeg. Sonora runs the official yt-dlp nightly 2026.10.10.233141 Python zipimport release, including matching EJS challenge scripts and the upstream default-client fix in PR #17805. Android playback uses Media3 ExoPlayer/session 1.11.1. `scripts/setup-android-media.mjs` downloads and SHA-256 verifies it before Gradle builds; a versioned, atomic install replaces the old engine on app upgrades. The native library’s original 2025.11.12 fallback remains bundled but is not selected by Sonora. The native library bundle is intentionally separate from the Linux executable used by Next.js. The mobile bundle copies only public client configuration; server YouTube credentials are not included.
 
-For signed releases, create your own keystore and an ignored `android/keystore.properties` with `storeFile`, `storePassword`, `keyAlias`, and `keyPassword`. Run `./gradlew :app:assembleRelease`. APKs are split by architecture under `android/app/build/outputs/apk/release/`. Keep the signing key and passwords private and backed up: updates must use the same key. The maintainer's signing key is not distributed. A contributor's debug or differently signed release cannot update a maintainer-signed installation; use an emulator or a separate device without uninstalling your music library.
+For signed releases, create your own keystore and an ignored `android/keystore.properties` with `storeFile`, `storePassword`, `keyAlias`, and `keyPassword`. Run `./gradlew :app:assembleRelease`. A universal APK and smaller APKs split by architecture are generated under `android/app/build/outputs/apk/release/`. Keep the signing key and passwords private and backed up: updates must use the same key. The maintainer's signing key is not distributed. A contributor's debug or differently signed release cannot update a maintainer-signed installation; use an emulator or a separate device without uninstalling your music library.
 
 ## Verification
 

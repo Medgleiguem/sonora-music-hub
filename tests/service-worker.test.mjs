@@ -12,10 +12,10 @@ function worker() {
     fetch: async () => new Response('network response'),
     caches: { open: async () => ({ match: async () => undefined, put: async () => {} }) }
   });
-  return async path => {
+  return async (path, destination = '') => {
     let response;
     listeners.fetch({
-      request: { method: 'GET', url: `https://sonora.test${path}`, mode: 'navigate', headers: new Headers() },
+      request: { method: 'GET', url: `https://sonora.test${path}`, mode: destination ? 'no-cors' : 'navigate', destination, headers: new Headers() },
       respondWith: value => { response = value; }, waitUntil: () => {}
     });
     if (response) await response;
@@ -28,6 +28,11 @@ test('installer pages and release downloads bypass the app-shell navigation cach
   for (const path of ['/android', '/downloads/index.html', '/downloads/sonora-android.apk', '/downloads/checksums.json', '/downloads/sonora-android-source.zip']) {
     assert.equal(await handles(path), false, `${path} must not replace the cached app shell`);
   }
+});
+
+test('analytics scripts bypass the offline asset cache', async () => {
+  const handles = worker();
+  assert.equal(await handles('/_vercel/insights/script.js', 'script'), false);
 });
 
 test('the music app still uses its navigation cache while APIs bypass it', async () => {

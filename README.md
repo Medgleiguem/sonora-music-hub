@@ -70,7 +70,7 @@ cd android
 ./gradlew :app:assembleDebug
 ```
 
-On Windows, use `gradlew.bat`. Debug APKs are produced in `android/app/build/outputs/apk/debug/`: choose **arm64-v8a** for most modern phones, **armeabi-v7a** for supported older devices, or **x86_64** for an emulator. With an emulator connected:
+On Windows, use `gradlew.bat`. Debug APKs are produced in `android/app/build/outputs/apk/debug/`: choose **universal** to let Android select the correct architecture, or a smaller **arm64-v8a**, **armeabi-v7a** or **x86_64** build when the OS architecture is known. With an emulator connected:
 
 ```sh
 adb install -r app/build/outputs/apk/debug/app-x86_64-debug.apk

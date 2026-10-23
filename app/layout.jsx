@@ -1,5 +1,6 @@
 import '../src/styles.css';
 import PwaRegister from '../src/PwaRegister';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata = {
   title: 'Sonora — Your music, in one place',
@@ -17,7 +18,7 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body><PwaRegister />{children}</body>
+      <body><PwaRegister />{children}<Analytics /></body>
     </html>
   );
 }

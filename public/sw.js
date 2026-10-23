@@ -24,7 +24,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   // The installer and APKs must never replace '/' in the offline music shell.
-  if (url.pathname === '/android' || url.pathname.startsWith('/downloads/')) return;
+  if (url.pathname === '/android' || url.pathname.startsWith('/downloads/') || url.pathname.startsWith('/_vercel/insights/')) return;
   if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.searchParams.has('_rsc') || request.headers.has('RSC')) return;
   const save = (key, response) => {
     if (response.ok) event.waitUntil(caches.open(CACHE).then((cache) => cache.put(key, response.clone())).catch(() => {}));

@@ -1,5 +1,15 @@
 # Vercel launch status
 
+## Website analytics and download starts — 2026-10-20
+
+The existing Hobby project has Vercel Web Analytics enabled. Website deployment `dpl_EPJBsuTTNmNhkE8mbRfuJezokJwE`, https://sonora-music-qkmzi3bmy-meds-projects-9af78741.vercel.app, adds the Next.js analytics component, static installer analytics and owner-approved download-start pages for both ARM architectures. The published APKs, matching source archive and checksum manifest are unchanged. Deployment source was isolated from unrelated workspace edits using the prior published source snapshot. The prior website without analytics is `dpl_944vbvCCzcAw6B9FrjGeuCGvMwZT`; the visitor-analytics-only release is `dpl_9BwJVJStDNYegz5ji6TPYgpuMUmk`.
+
+In Vercel Analytics, expand Pages and inspect `/downloads/start-arm64.html` and `/downloads/start-arm32.html`. These page views estimate download starts; they do not prove completed transfers or installations. Ordinary visits to `/downloads/index.html` remain separate. No paid plan or custom events are used. See [analytics operation and limits](analytics.md).
+
+Verification: production builds, 30 Node tests and four browser checks passed. The browser suite covers automatic downloading with analytics blocked, a 320-pixel viewport, the JavaScript-disabled manual fallback and prevention of a duplicate download after an early manual click. Both final staged start pages matched the rendered templates byte for byte, and the checksum manifest matched the previous public release. Public visitor-analytics checks confirmed HTTP 200 Vercel page-view submissions from the music website and installer, including the generated Next.js collection endpoint.
+
+Post-promotion anonymous browser checks on `https://sonora.gleiguem.com` confirmed accepted HTTP 200 Vercel page views for `/`, `/downloads/index.html` and both download-start pages, with no JavaScript errors. Both start pages initiated the correctly named architecture download; those browser checks substituted small test responses for APK bodies. All preserved APK/source files were separately verified against the published SHA-256 manifest. Verification visits may appear among the initial analytics counts.
+
 Source-publication update, 2026-10-18: the owner approved open-source publication under GPL-3.0. References below to private source or missing publication approval describe historical release conditions. The public source and contribution policy are now defined in the root README, LICENSE and CONTRIBUTING files. Existing historical APK installer previews remain protected; version 1.2.1 adds an owner-authorized public installer on the main website.
 
 ## Android 1.2.1 and public source — 2026-10-18
@@ -129,3 +139,12 @@ The user subsequently authorized an Android-first architecture change, with iPho
 The Playwright config now accepts `PLAYWRIGHT_BASE_URL` and optional `PLAYWRIGHT_STORAGE_STATE`. Use an authenticated browser state for a protected candidate, or omit it for the public domain. Set `PLAYWRIGHT_PRODUCTION=1` to include offline-PWA tests. Store authentication state outside the repository and never commit it.
 
 The final installer-link-only website update (`dpl_8Zx6yCxahX3C8bu5nQJzgzGZkiiV`) was promoted after the full eight-check public run; both hosted-choice checks passed again on the final public URL. The corrected source archive removes incorrect Capacitor sample tests. The signed APK is unchanged.
+
+
+## Android 1.2.2 smaller installers — 2026-10-18
+
+Published the complete website as deployment `dpl_FZ2GNi5o5nHrgzuWFzCr7n7SNGkt` (https://sonora-music-ql3k1h67t-meds-projects-9af78741.vercel.app), then promoted it to https://sonora-music-hub-six.vercel.app. The installer remains at `/downloads/index.html`, with `/android` redirecting there. The previous production deployment `dpl_GHJnNxEJrBN8DeGCr38kLjQUYYCA` (https://sonora-music-cm1cbahc0-meds-projects-9af78741.vercel.app) remains available for rollback using Vercel promote.
+
+The initial universal APK exceeded Vercel Hobby's 100 MB file limit and the upload was rejected before promotion. At the user's request, the website now offers the complete architecture-specific installers: arm64 is 72,617,983 bytes and arm32 is 65,965,167 bytes. Both have prominent download buttons and compatibility guidance. The legacy `/downloads/sonora-android.apk` URL still serves arm64. No GitHub Release or additional hosting service was created. Native features, dependencies, audio settings and signing are unchanged.
+
+Verification: 29 Node tests passed. Candidate browser verification passed 14 checks covering imports, local playback, playback position, offline reopening, library rendering, storage recovery, mobile layout and the hosted Android download flow. The installer was inspected at 320, 412 and 1440 pixels. After promotion, both hosted download-flow tests and all three installer widths passed without an authenticated session. Public HTTP checks verified page version, main website availability, APK content types and sizes, and the `/android` redirect. Full downloads of both ARM installers, the legacy APK URL and the application source archive matched the locally generated SHA-256 manifest exactly. Physical ARM-device installation still requires verification; the friend's reported architecture is not confirmed by the screenshots alone.

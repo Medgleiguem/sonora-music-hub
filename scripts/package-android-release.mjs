@@ -11,12 +11,20 @@ const metadata = JSON.parse(await readFile(join(release, 'output-metadata.json')
 if (metadata.variantName !== 'release' || metadata.elements.some(item => item.versionName !== version)) {
   throw new Error('Build the signed release for the current package version before packaging.');
 }
+for (const abi of ['arm64-v8a', 'armeabi-v7a']) {
+  if (!metadata.elements.some(item => item.outputFile === `app-${abi}-release.apk`
+      && item.filters.some(filter => filter.filterType === 'ABI' && filter.value === abi))) {
+    throw new Error(`Build the ${abi} release APK before packaging the Android installers.`);
+  }
+}
 const destination = join(root, 'mobile-artifacts/android-installer/.vercel/output');
 const staticFiles = join(destination, 'static');
 await mkdir(staticFiles, { recursive: true });
 execFileSync('python3', ['scripts/package-android-source.py'], { cwd: root, stdio: 'inherit' });
 const copies = [
+  // Preserve the old direct URL while offering both labelled installers on the page.
   [join(release, 'app-arm64-v8a-release.apk'), 'sonora-android.apk'],
+  [join(release, 'app-arm64-v8a-release.apk'), 'sonora-android-arm64.apk'],
   [join(release, 'app-armeabi-v7a-release.apk'), 'sonora-android-arm32.apk'],
   [join(root, 'mobile-artifacts/sonora-android-source.zip'), 'sonora-android-source.zip']
 ];
@@ -30,7 +38,13 @@ await copyFile(join(root, 'public/licenses.html'), join(staticFiles, 'licenses.h
 await cp(join(root, 'public/licenses'), join(staticFiles, 'licenses'), { recursive: true });
 const template = await readFile(join(root, 'mobile/installer.html'), 'utf8');
 await writeFile(join(staticFiles, 'index.html'), template.replaceAll('{{VERSION}}', version)
-  .replaceAll('{{SIZE_MB}}', String(Math.round(manifest.files['sonora-android.apk'].bytes / 1024 / 1024))));
+  .replaceAll('{{SIZE_MB}}', String(Math.round(manifest.files['sonora-android-arm64.apk'].bytes / 1_000_000)))
+  .replaceAll('{{ARM32_SIZE_MB}}', String(Math.round(manifest.files['sonora-android-arm32.apk'].bytes / 1_000_000))));
+const downloadStart = await readFile(join(root, 'mobile/download-start.html'), 'utf8');
+for (const [arch, label] of [['arm64', '64-bit Android'], ['arm32', '32-bit Android']]) {
+  await writeFile(join(staticFiles, `start-${arch}.html`), downloadStart
+    .replaceAll('{{ARCH}}', arch).replaceAll('{{ANDROID_LABEL}}', label));
+}
 await writeFile(join(staticFiles, 'checksums.json'), JSON.stringify(manifest, null, 2) + '\n');
 await writeFile(join(destination, 'config.json'), JSON.stringify({ version: 3, routes: [
   ...copies.map(([, name]) => ({ src: `/${name}`, headers: {

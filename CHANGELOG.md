@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2 — 2026-10-18
+
+- Offer smaller, clearly labelled 32-bit and 64-bit ARM installers for Android 10 or newer.
+- Refuse packaging a release that is missing either supported ARM installer.
+- Preserve existing app features, audio quality and update signing; each installer contains only its matching native architecture.
+
 ## 1.2.1 — 2026-10-18
 
 - Add “Made by Med Gleiguem” to the mobile bottom bar, desktop sidebar and installer.

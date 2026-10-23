@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <title>Sonora — Your music. With you.</title>
+  <desc>A dark Sonora banner with lime green lettering and two illustrated Android music players.</desc>
+  <defs>
+    <radialGradient id="glow"><stop stop-color="#415523" stop-opacity=".5"/><stop offset="1" stop-color="#0b0b0c" stop-opacity="0"/></radialGradient>
+    <linearGradient id="purple" x2="1" y2="1"><stop stop-color="#986de3"/><stop offset="1" stop-color="#342145"/></linearGradient>
+    <linearGradient id="orange" x2="1" y2="1"><stop stop-color="#d3a06d"/><stop offset="1" stop-color="#623f40"/></linearGradient>
+    <linearGradient id="blue" x2="1" y2="1"><stop stop-color="#5b90b0"/><stop offset="1" stop-color="#1d344d"/></linearGradient>
+    <linearGradient id="green" x2="1" y2="1"><stop stop-color="#8dba71"/><stop offset="1" stop-color="#2e5447"/></linearGradient>
+    <filter id="shadow" x="-50%" y="-25%" width="200%" height="160%"><feDropShadow dx="0" dy="22" stdDeviation="20" flood-opacity=".6"/></filter>
+    <g id="note"><rect width="52" height="52" rx="15" fill="#b8f34a"/><path d="M17 20v16a5 5 0 1 0 4 4V24l15-3v11a5 5 0 1 0 4 4V14Z" fill="#12160b"/></g>
+    <g id="disc"><circle r="40" fill="#fff" opacity=".12"/><circle r="28" fill="none" stroke="#fff" stroke-opacity=".22"/><circle r="15" fill="#16151b"/><circle r="4" fill="#d4d1d8"/></g>
+  </defs>
+  <rect width="1200" height="630" fill="#0b0b0c"/>
+  <ellipse cx="960" cy="310" rx="550" ry="490" fill="url(#glow)"/>
+  <g font-family="DejaVu Sans, sans-serif">
+    <g transform="translate(62 54)"><use href="#note"/><text x="67" y="38" fill="#f7f7f4" font-size="39" font-weight="700" letter-spacing="-2">sonora<tspan fill="#b8f34a">.</tspan></text></g>
+    <text x="64" y="170" fill="#b8f34a" font-size="15" font-weight="700" letter-spacing="3">YOUR PRIVATE MUSIC LIBRARY</text>
+    <text x="58" y="263" fill="#f7f7f4" font-size="77" font-weight="700" letter-spacing="-4">Your music.</text>
+    <text x="58" y="352" fill="#b8f34a" font-size="77" font-weight="700" letter-spacing="-4">With you.</text>
+    <text x="64" y="406" fill="#b6b7af" font-size="23">Keep your favorites close.</text>
+    <text x="64" y="440" fill="#b6b7af" font-size="23">Listen wherever life takes you.</text>
+    <g transform="translate(64 476)"><rect width="189" height="40" rx="20" fill="#1c2413" stroke="#364326"/><circle cx="21" cy="20" r="4" fill="#b8f34a"/><text x="35" y="26" fill="#e1eccf" font-size="15">Offline listening</text></g>
+    <g transform="translate(265 476)"><rect width="177" height="40" rx="20" fill="#17181a" stroke="#303234"/><text x="20" y="26" fill="#d2d3cb" font-size="15">Free &amp; open source</text></g>
+    <text x="64" y="582" fill="#83877c" font-size="17" letter-spacing=".4">sonora.gleiguem.com</text>
+    <g transform="translate(675 98) rotate(-9 118 250)" filter="url(#shadow)">
+      <rect width="238" height="506" rx="37" fill="#292c29" stroke="#4b5147" stroke-width="2"/>
+      <rect x="6" y="6" width="226" height="494" rx="32" fill="#101112"/>
+      <rect x="83" y="14" width="72" height="16" rx="8" fill="#030403"/>
+      <g transform="translate(21 54)">
+        <text fill="#b8f34a" font-size="13" font-weight="700">sonora.</text><text x="167" fill="#9da095" font-size="16">☰</text>
+        <text y="39" fill="#f7f7f4" font-size="25" font-weight="700" letter-spacing="-1">Your library</text>
+        <text y="61" fill="#92958b" font-size="10">All your favorites, in one place.</text>
+        <rect y="80" width="196" height="32" rx="9" fill="#b8f34a"/><path d="m64 90 0 12 10-6Z" fill="#15190e"/><text x="83" y="101" font-size="11" font-weight="700" fill="#15190e">Play all</text>
+        <rect y="131" width="91" height="94" rx="10" fill="url(#purple)"/><use href="#disc" transform="translate(45 178) scale(.8)"/>
+        <rect x="105" y="131" width="91" height="94" rx="10" fill="url(#orange)"/><use href="#disc" transform="translate(150 178) scale(.8)"/>
+        <text y="244" fill="#e8e9e2" font-size="11">Evening mix</text><text x="105" y="244" fill="#e8e9e2" font-size="11">On repeat</text>
+        <rect y="264" width="91" height="94" rx="10" fill="url(#blue)"/><use href="#disc" transform="translate(45 311) scale(.8)"/>
+        <rect x="105" y="264" width="91" height="94" rx="10" fill="url(#green)"/><use href="#disc" transform="translate(150 311) scale(.8)"/>
+        <text y="377" fill="#e8e9e2" font-size="11">Slow mornings</text><text x="105" y="377" fill="#e8e9e2" font-size="11">Your favorites</text>
+        <rect x="-8" y="396" width="212" height="38" rx="9" fill="#20231a"/><circle cx="177" cy="415" r="11" fill="#b8f34a"/><path d="m174 410 0 10 8-5Z" fill="#15190e"/><text x="7" y="419" fill="#c6d8ab" font-size="10">Your music. Always close.</text>
+      </g>
+    </g>
+    <g transform="translate(919 61) rotate(8 115 250)" filter="url(#shadow)">
+      <rect width="230" height="502" rx="37" fill="#30342c" stroke="#69745b" stroke-width="2"/>
+      <rect x="6" y="6" width="218" height="490" rx="32" fill="#121510"/>
+      <rect x="79" y="14" width="72" height="16" rx="8" fill="#030403"/>
+      <text x="115" y="67" text-anchor="middle" fill="#b7c5a7" font-size="10" letter-spacing="2">NOW PLAYING</text>
+      <rect x="22" y="96" width="186" height="196" rx="16" fill="url(#green)"/>
+      <circle cx="115" cy="194" r="69" fill="#18271e"/><circle cx="115" cy="194" r="56" fill="none" stroke="#435e45"/><circle cx="115" cy="194" r="45" fill="none" stroke="#435e45"/>
+      <circle cx="115" cy="194" r="25" fill="#b8f34a"/><path d="M110 181v23a6 6 0 1 0 4 6v-21l12-3v14a6 6 0 1 0 4 6v-28Z" fill="#1b2715"/>
+      <text x="23" y="329" fill="#f7f7f4" font-size="24" font-weight="700" letter-spacing="-.8">Feel the music.</text>
+      <text x="23" y="351" fill="#9aa88e" font-size="12">Your own collection</text><path d="M25 379h180" stroke="#3d4635" stroke-width="3" stroke-linecap="round"/><path d="M25 379h76" stroke="#b8f34a" stroke-width="3" stroke-linecap="round"/><circle cx="101" cy="379" r="4" fill="#b8f34a"/>
+      <text x="24" y="397" fill="#8a9680" font-size="9">1:24</text><text x="185" y="397" fill="#8a9680" font-size="9">3:48</text>
+      <circle cx="115" cy="436" r="26" fill="#b8f34a"/><path d="M107 426v20m15-20v20" stroke="#18200f" stroke-width="5"/><path d="m56 430-10 6 10 6Zm-13-1v14m131-13 10 6-10 6Zm13-1v14" fill="#c5cfbc" stroke="#c5cfbc" stroke-width="2"/>
+      <rect x="82" y="480" width="66" height="4" rx="2" fill="#59634f"/>
+    </g>
+  </g>
+  <rect y="626" width="1200" height="4" fill="#b8f34a"/>
+</svg>
