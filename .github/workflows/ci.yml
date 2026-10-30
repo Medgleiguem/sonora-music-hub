@@ -30,6 +30,8 @@ jobs:
       - run: npm test
       - run: npm audit --audit-level=high
       - run: npx playwright install --with-deps chromium
+      - name: Prepare installer page fixtures without signed APKs
+        run: node tests/prepare-browser-downloads.mjs
       - run: npm run build
       - name: Production browser regressions
         run: npm run test:browser

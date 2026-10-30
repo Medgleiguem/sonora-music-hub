@@ -1,0 +1,4 @@
+#!/usr/bin/env python3
+# Replaces the youtubedl-android library's bundled yt-dlp, which its init() copies but Sonora never runs:
+# NativeMedia runs the pinned engine from assets/downloader at sonora-engine/yt-dlp instead.
+raise SystemExit("Sonora runs its pinned engine from sonora-engine/yt-dlp.")

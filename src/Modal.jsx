@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 
-export default function Modal({ title, subtitle, onClose, children, wide = false }) {
+export default function Modal({ title, subtitle, onClose, children, wide = false, header = null }) {
   const panel = useRef(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -28,9 +28,11 @@ export default function Modal({ title, subtitle, onClose, children, wide = false
   }, []);
   return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <section ref={panel} className={`modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={subtitle ? descriptionId : undefined}>
+      <span className="sheet-handle" aria-hidden="true" />
       <header className="modal-header">
-        <button className="icon-button modal-close" onClick={onClose} aria-label="Close"><X size={22} /></button>
+        {header}
         <div className="modal-heading"><h2 id={titleId}>{title}</h2>{subtitle && <p id={descriptionId}>{subtitle}</p>}</div>
+        <button className="icon-button modal-close" onClick={onClose} aria-label="Close"><X size={22} /></button>
       </header>
       <div className="modal-body">{children}</div>
     </section>

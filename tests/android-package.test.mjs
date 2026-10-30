@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, copyFile, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, copyFile, cp, writeFile, readFile, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -17,6 +17,7 @@ async function fixture(t, arm32Metadata = true) {
   }
   await copyFile(new URL('../mobile/installer.html', import.meta.url), join(root, 'mobile/installer.html'));
   await copyFile(new URL('../mobile/download-start.html', import.meta.url), join(root, 'mobile/download-start.html'));
+  await cp(new URL('../mobile/store', import.meta.url), join(root, 'mobile/store'), { recursive: true });
   await writeFile(join(root, 'package.json'), JSON.stringify({ version: '1.2.2', type: 'module' }));
   await writeFile(join(root, 'public/licenses.html'), 'Licenses');
   const elements = [];
@@ -45,12 +46,17 @@ test('website packages small complete ARM installers and offers both architectur
     createHash('sha256').update('installer-arm64-v8a').digest('hex'));
   const page = await readFile(join(output, 'index.html'), 'utf8');
   assert.ok(!page.includes('{{'), 'installer template must be fully rendered');
-  assert.match(page, /class="install" href="\.\/start-arm64\.html"/);
-  assert.match(page, /class="install" href="\.\/start-arm32\.html"/);
+  assert.match(page, /href="\/downloads\/start-arm64\.html" aria-label="Download for 64-bit Android"/);
+  assert.match(page, /href="\/downloads\/start-arm32\.html" aria-label="Download for 32-bit Android"/);
+  // Absolute paths keep images and links working at /, /download, /downloads and /android.
+  assert.doesNotMatch(page, /(?:src|href)="\.\//);
+  // The listing ships its icon and every screenshot it shows.
+  const store = await readdir(join(output, 'store'));
+  for (const image of page.match(/\/downloads\/store\/[\w.-]+/g)) assert.ok(store.includes(image.slice('/downloads/store/'.length)), `${image} is packaged`);
   for (const arch of ['arm64', 'arm32']) {
     const start = await readFile(join(output, `start-${arch}.html`), 'utf8');
     assert.ok(!start.includes('{{'), 'download-start template must be fully rendered');
-    assert.match(start, new RegExp(`href="\\./sonora-android-${arch}\\.apk" download`));
+    assert.match(start, new RegExp(`href="/downloads/sonora-android-${arch}\\.apk" download`));
     assert.match(start, /noindex, nofollow/);
   }
 });

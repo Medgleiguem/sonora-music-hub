@@ -10,8 +10,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Universal APKs otherwise also pick up dependency ABIs outside the splits.
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
-        versionCode 5
-        versionName "1.2.2"
+        versionCode 11
+        versionName "1.7.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -48,7 +48,22 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        // Sonora Lite: a separate, smaller app installed beside Sonora. Release, plus code/resource shrinking,
+        // compressed code and the audio-only FFmpeg from scripts/build-lite-ffmpeg.sh (configured below).
+        lite {
+            initWith release
+            applicationIdSuffix '.lite'
+            versionNameSuffix '-lite'
+            minifyEnabled true
+            shrinkResources true
+            setProguardFiles([getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-lite.pro'])
+            testProguardFiles 'proguard-lite-test.pro'
+            if (project.findProperty('sonoraTestBuildType') == 'lite') proguardFile 'proguard-lite-harness.pro'
+            matchingFallbacks = ['release']
+        }
     }
+    // Instrumentation tests run against debug unless another build type is requested (-PsonoraTestBuildType=lite).
+    testBuildType = project.findProperty('sonoraTestBuildType') ?: 'debug'
 }
 
 repositories {
@@ -81,6 +96,46 @@ tasks.register('prepareAndroidMedia', Exec) {
     commandLine 'node', 'scripts/setup-android-media.mjs'
 }
 tasks.named('preBuild').configure { dependsOn 'prepareAndroidMedia' }
+
+// Drop files from the bundled FFmpeg runtime that nothing can load; see the script for the proof rules.
+interface MediaRuntimeExec { @javax.inject.Inject ExecOperations getExec() }
+def mediaRuntimeExec = objects.newInstance(MediaRuntimeExec)
+def pruneScript = rootProject.file('../scripts/prune-android-media.py').absolutePath
+tasks.matching { it.name ==~ /merge\w*NativeLibs/ && !it.name.contains('Lite') }.configureEach { task ->
+    task.doLast {
+        try {
+            mediaRuntimeExec.getExec().exec { commandLine(['python3', pruneScript] + task.outputs.files.files*.absolutePath) }
+        } catch (Exception unavailable) {
+            // The full runtime still works; only the size saving is lost.
+            logger.warn("Bundled media runtime not pruned: ${unavailable.message}")
+        }
+    }
+}
+
+// Sonora Lite replaces the general-purpose FFmpeg runtime with the audio-only build, for every shipped ABI.
+def liteMedia = rootProject.file('lite-media')
+tasks.matching { it.name ==~ /merge\w*LiteNativeLibs/ && !it.name.contains('AndroidTest') }.configureEach { task ->
+    task.doLast {
+        ['arm64-v8a', 'armeabi-v7a', 'x86_64'].each { abi ->
+            // The task also has a test-only output without the runtime; replace wherever the runtime was merged.
+            def targets = task.outputs.files.files.collect { new File(it, "lib/$abi") }.findAll { new File(it, 'libffmpeg.zip.so').isFile() }
+            if (targets.isEmpty()) throw new GradleException("No FFmpeg runtime merged for $abi; Sonora Lite cannot replace it.")
+            targets.each { target ->
+                ['libffmpeg.so', 'libffprobe.so', 'libffmpeg.zip.so'].each { name ->
+                    def source = new File(liteMedia, "$abi/$name")
+                    if (!source.isFile()) throw new GradleException("Missing $source; run scripts/build-lite-ffmpeg.sh first.")
+                    java.nio.file.Files.copy(source.toPath(), new File(target, name).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                }
+            }
+        }
+    }
+}
+androidComponents {
+    onVariants(selector().withBuildType('lite')) { variant ->
+        // Smaller download; Android keeps an extracted copy of the code after install.
+        variant.packaging.dex.useLegacyPackaging.set(true)
+    }
+}
 
 try {
     def servicesJSON = file('google-services.json')

@@ -19,12 +19,12 @@ function fixture(overrides = {}) {
 
 test('native staging transfers bounded chunks exactly once and sends only queue metadata', async () => {
   const { client, calls } = fixture();
-  const bytes = new Uint8Array(600000).map((_, index) => index % 251);
+  const bytes = new Uint8Array(2_400_000).map((_, index) => index % 251);
   const track = { id: 'local-track', title: 'A song', source: 'local', blob: new Blob([bytes]), cover: 'data:image/png;base64,private' };
   await client.playQueue([track], 0);
   const chunks = calls.filter(([type]) => type === 'chunk').map(([, item]) => Buffer.from(item.data, 'base64'));
   assert.equal(chunks.length, 3);
-  assert.ok(chunks.every(chunk => chunk.length <= 256 * 1024));
+  assert.ok(chunks.every(chunk => chunk.length <= 1024 * 1024));
   assert.deepEqual(Buffer.concat(chunks), Buffer.from(bytes));
   const item = calls.find(([type]) => type === 'queue')[1].items[0];
   assert.equal(item.uri, 'file:///private/audio');

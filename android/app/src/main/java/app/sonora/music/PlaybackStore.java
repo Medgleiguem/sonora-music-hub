@@ -8,7 +8,7 @@ import java.util.*;
 /** Private, bounded blob staging. A completed name is published only by atomic rename. */
 final class PlaybackStore {
     static final long MAX_BYTES = 256L * 1024 * 1024;
-    static final int CHUNK_BYTES = 256 * 1024;
+    static final int CHUNK_BYTES = 1024 * 1024;
     private final File root;
     private final Map<String, Upload> uploads = new HashMap<>();
     static final class Stage {

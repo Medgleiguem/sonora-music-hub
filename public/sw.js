@@ -1,11 +1,13 @@
-const CACHE = 'sonora-shell-v5';
-const SHELL = ['/', '/manifest.webmanifest', '/pwa-192.png', '/pwa-512.png', '/favicon.svg'];
+// The music app lives at /app; the rest of the site (the download page, installers) is always fetched fresh.
+const APP = '/app';
+const CACHE = 'sonora-shell-v6';
+const SHELL = [APP, '/manifest.webmanifest', '/pwa-192.png', '/pwa-512.png', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     await cache.addAll(SHELL);
-    const html = await (await cache.match('/')).text();
+    const html = await (await cache.match(APP)).text();
     // Initial page scripts may load before the service worker controls the tab.
     // Precache the build's hashed JS/CSS so the first offline reopen also works.
     const assets = [...new Set([...html.matchAll(/(?:src|href)="([^" ]*\/_next\/static\/[^" ]+)"/g)].map((match) => new URL(match[1].replace(/&amp;/g, '&'), self.location.origin)).filter((url) => url.origin === self.location.origin).map((url) => url.href))];
@@ -23,8 +25,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-  // The installer and APKs must never replace '/' in the offline music shell.
-  if (url.pathname === '/android' || url.pathname.startsWith('/downloads/') || url.pathname.startsWith('/_vercel/insights/')) return;
+  // Only the music app is cached; the download page, installers and analytics always come from the network.
+  if (url.pathname.startsWith('/downloads/') || url.pathname.startsWith('/_vercel/insights/')) return;
+  if (request.mode === 'navigate' && url.pathname !== APP && !url.pathname.startsWith(`${APP}/`)) return;
   if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.searchParams.has('_rsc') || request.headers.has('RSC')) return;
   const save = (key, response) => {
     if (response.ok) event.waitUntil(caches.open(CACHE).then((cache) => cache.put(key, response.clone())).catch(() => {}));
@@ -32,8 +35,8 @@ self.addEventListener('fetch', (event) => {
   };
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
-      const network = fetch(request).then((response) => save('/', response));
-      const cached = await caches.open(CACHE).then((cache) => cache.match('/'));
+      const network = fetch(request).then((response) => save(APP, response));
+      const cached = await caches.open(CACHE).then((cache) => cache.match(APP));
       if (!cached) return network.catch(() => new Response('Sonora is offline. Connect once to load your music app.', { status: 503, headers: { 'Content-Type': 'text/plain' } }));
       // Slow connections should not keep an installed music player on a blank screen.
       return Promise.race([network.then((response) => response.ok ? response : cached).catch(() => cached), new Promise((resolve) => setTimeout(() => resolve(cached), 3500))]);

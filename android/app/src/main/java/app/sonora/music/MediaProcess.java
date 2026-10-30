@@ -12,10 +12,18 @@ final class MediaProcess {
     private volatile Process process;
     private volatile int group;
     private volatile String failure;
+    private Runnable cancellation;
 
     synchronized void cancel(String reason) {
-        if (failure == null) failure = reason;
+        boolean first = failure == null;
+        if (first) failure = reason;
         kill();
+        if (first && cancellation != null) cancellation.run();
+    }
+
+    synchronized void onCancel(Runnable action) {
+        cancellation = action;
+        if (failure != null && action != null) action.run();
     }
 
     boolean isCancelled() { return failure != null; }

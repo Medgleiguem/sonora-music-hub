@@ -47,17 +47,19 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('button', { name: 'Download', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Download', exact: true }).click();
-  await page.getByLabel('YouTube video or playlist URL').fill('https://youtu.be/jNQXAC9IVRw');
+  // Earlier stopped downloads open the Downloads panel first.
+  if (await page.getByRole('button', { name: 'New download', exact: true }).isVisible()) await page.getByRole('button', { name: 'New download', exact: true }).click();
+  await page.getByLabel('YouTube or Spotify link').fill('https://youtu.be/jNQXAC9IVRw');
   await page.getByLabel('Audio format', { exact: true }).selectOption('mp3');
   await page.getByRole('checkbox', { name: /I have the right/ }).check();
   await page.getByRole('checkbox', { name: /Also keep a recovery copy/ }).check();
-  await page.getByRole('button', { name: /^(Convert and save to device|Retry download)$/ }).click();
+  await page.getByRole('button', { name: 'Download song', exact: true }).click();
   // Switching apps must not cancel a user's download.
-  await expect(page.getByRole('button', { name: 'Cancel download', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Stop / })).toBeVisible();
   adb('shell', 'input', 'keyevent', '3');
   await new Promise(resolve => setTimeout(resolve, 3000));
   adb('shell', 'am', 'start', '-n', 'app.sonora.music/.MainActivity');
-  await expect(page.locator('.download-progress-card')).toHaveClass(/complete|error|partial|cancelled/, { timeout: 280000 });
+  await expect(page.locator('.download-job').first()).toHaveClass(/complete|error|partial|stopped/, { timeout: 280000 });
   await expect(page.getByText('Download complete', { exact: true })).toBeVisible();
   await page.screenshot({ path: 'mobile-artifacts/android-download.png' });
   console.log('PASS: real Android download, conversion, and library storage');
@@ -81,7 +83,10 @@ try {
   adb('shell', 'svc', 'data', 'disable');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Library', exact: true }).click();
-  await page.getByRole('button', { name: 'Play Me at the zoo', exact: true }).click();
+  // Native playback continues across a WebView reload; pause it so offline playback is started afresh.
+  const playing = page.getByRole('button', { name: 'Pause Me at the zoo', exact: true }).first();
+  if (await playing.isVisible().catch(() => false)) await playing.click();
+  await page.getByRole('button', { name: 'Play Me at the zoo', exact: true }).first().click();
   await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await page.screenshot({ path: 'mobile-artifacts/android-offline.png' });
   console.log('PASS: offline reopen preserves library and playback');
@@ -89,7 +94,7 @@ try {
   adb('shell', 'svc', 'data', 'enable');
   await page.getByRole('button', { name: 'Download', exact: true }).click();
   // Avoid the IME consuming Back; blur before testing app navigation.
-  await page.getByLabel('YouTube video or playlist URL').evaluate(element => element.blur());
+  await page.evaluate(() => document.activeElement?.blur());
   adb('shell', 'input', 'keyevent', '4');
   await expect(page.getByRole('dialog')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Library', exact: true })).toBeVisible();

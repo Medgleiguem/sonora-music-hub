@@ -17,11 +17,14 @@
 - Import audio files and keep a device-local library with playlists and favorites.
 - Listen offline to saved tracks, with queue controls, repeat, shuffle and seeking.
 - Keep Android audio playing when the screen turns off or you switch apps. Media3 owns playback and prepared queue items independently of the WebView.
-- Discover music through YouTube search and an optional Jamendo catalog.
+- Discover music through YouTube search: songs, playlists, artists, curated Arabic classics and moods.
+- Like songs and build playlists without downloading; download a song, a playlist, or Liked songs for offline listening in one tap.
+- Search YouTube songs, public playlists, and artist channels. Open an artist to play, shuffle, and repeat that channel's loaded songs without unrelated recommendations.
+- Import a public or unlisted YouTube playlist by URL, or download a playlist from search. Available songs are saved into a local Sonora playlist; completed audio is reused on retry.
 - Attempt on-device YouTube audio streaming and MP3, M4A or Opus downloads, with progress, cancellation and recovery controls.
 - Use the responsive web player as an installable PWA, including local imports and offline playback.
 
-**Current status: active development, version 1.2.1.** YouTube streaming and downloading are experimental and remain unreliable. In the latest emulator tests, YouTube refused both Julia Boutros “Moqawem” and a second public clip. Cold search took about 12 seconds; the same cached query took 51 ms. These results are documented limitations, not a claim that downloads or first searches are fixed. Contributions that improve reproducibility, reliability and performance are especially welcome.
+**Current status: active development, version 1.3.0.** Android discovery uses a lightweight native search path with the bundled extractor as a compatibility fallback. Successful stream addresses are reused briefly in private process memory to speed up replay and seeking. YouTube streaming and downloading remain experimental: some clips play on the test connection, while other clips or connections can be refused. First playback still includes upstream extraction and JavaScript processing. See [performance measurements](docs/performance-1.3.md) for measured improvements and limits; they are not phone latency guarantees.
 
 ## Platform support
 
@@ -33,7 +36,7 @@
 | YouTube audio streaming / conversion | Experimental on-device resolver | Official visible player; local Node conversion on compatible hosts |
 | Conversion on the public Vercel demo | Uses the separate Android app | Intentionally unavailable; import files instead |
 
-There is no account or cloud library. Browser and Android installations have separate libraries. Sonora is not affiliated with YouTube, Spotify or Jamendo. Only download or redistribute content you have the right to use.
+There is no account or cloud library. Browser and Android installations have separate libraries. Sonora is not affiliated with YouTube or Spotify. Only download or redistribute content you have the right to use.
 
 ## Start the web app
 
@@ -47,7 +50,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000). In Windows PowerShell, use `Copy-Item .env.example .env.local` for the copy step. All configuration is optional for local imports and playback.
+Open [localhost:3000/app](http://localhost:3000/app) for the music player; [localhost:3000](http://localhost:3000) is the Android download page once `npm run package:android -- --public` has prepared it. In Windows PowerShell, use `Copy-Item .env.example .env.local` for the copy step. All configuration is optional for local imports and playback.
 
 FFmpeg installs with npm. The first dev/build command downloads a pinned, SHA-256-verified yt-dlp executable from its official release. Install scripts and access to npm and GitHub release assets must be available. The standalone server executable includes Python; Node supplies its JavaScript runtime.
 
@@ -89,8 +92,7 @@ Copy [.env.example](.env.example); keep real values out of Git.
 | `YOUTUBE_API_KEY` | Optional server-only YouTube Data API key for web search; otherwise yt-dlp handles lookup |
 | `YOUTUBE_REGION` / `NEXT_PUBLIC_YOUTUBE_REGION` | Two-letter discovery region, default `US` |
 | `NEXT_PUBLIC_YOUTUBE_ENABLED` | Set `false` to hide YouTube discovery |
-| `NEXT_PUBLIC_JAMENDO_CLIENT_ID` | Optional public client ID for independent music discovery |
-| `PLAYLIST_MAX_ITEMS` | Server playlist lookup cap, 1–100; default 100 |
+| `PLAYLIST_MAX_ITEMS` | Server playlist metadata batch size, 1–100; default 100. Imports continue through subsequent batches. |
 | `YT_DLP_PATH` / `FFMPEG_PATH` | Optional absolute server executable overrides |
 | `YT_DLP_PROXY` / `YT_DLP_COOKIES_PATH` | Optional private server-side configuration; neither is required or bundled with Android |
 
@@ -117,7 +119,7 @@ PLAYWRIGHT_PRODUCTION=1 npm run test:browser
 
 The last command uses POSIX environment syntax; in PowerShell, set `$env:PLAYWRIGHT_PRODUCTION = '1'` before running the test command. Browser tests use generated audio and stubbed upstream responses. They verify app behavior without a YouTube account, but **do not prove live YouTube download success**. Separate Android live probes report actual upstream failures.
 
-CI runs Node tests, a production build, browser regressions, dependency auditing, and Android JVM tests/debug compilation without signing keys or production secrets. See [CONTRIBUTING.md](CONTRIBUTING.md) for focused checks and the PR process.
+CI runs Node tests, a production build, browser regressions, dependency auditing, and Android JVM tests/debug compilation without signing keys or production secrets. Installer-page checks use generated HTML and screenshot fixtures with intercepted APK requests; CI does not package or publish release installers. See [CONTRIBUTING.md](CONTRIBUTING.md) for focused checks and the PR process.
 
 ## How it fits together
 
@@ -131,13 +133,17 @@ CI runs Node tests, a production build, browser regressions, dependency auditing
 | `tests/` | Node, Playwright and emulator workflows |
 | `docs/` | Architecture, Android build notes and release evidence |
 
-Read the [architecture overview](docs/architecture.md), [1.2.1 release notes](docs/android-release-1.2.1.md) and [changelog](CHANGELOG.md) for design details and current limits.
+Read the [architecture overview](docs/architecture.md), [1.4 release notes](docs/android-release-1.4.md) and [changelog](CHANGELOG.md) for design details and current limits, including the latest 1.7.1 changes.
 
 ## Storage and known limits
 
 Audio and library metadata are stored on the current device in IndexedDB. Android stages private native playback copies while preserving the originals, so first playback uses extra storage. Only prepared items are guaranteed to continue if the Activity is destroyed during staging. Force-stop or OS process death stops playback; process-death queue restoration is not implemented.
 
-Native queues contain at most 500 items; playback copies are capped at 256 MiB per file. Conversion accepts finished videos up to 30 minutes, with a 96 MiB source cap, 64 MiB output cap and 260-second deadline. Playlist downloads process up to 100 entries sequentially. These limits do not guarantee every video will work.
+In Explore, choose **Songs**, **Playlists**, or **Artists**. Playlist downloads and the **Import YouTube playlist** action use the same downloader. Public and unlisted links are supported; private playlists and account sign-in are not. Songs are saved as they finish, so cancellation or an individual failure retains completed work. Retry reuses saved audio in the requested format and restores source order. Importing the same playlist in another format updates its song references while keeping older audio in the library.
+
+Artist discovery searches YouTube channels, which can include performances and other uploads as well as songs. **Play artist** replaces the current queue and repeats the loaded selection. Use **Load more songs** before starting a longer session, or **Download artist songs** to import the channel's available uploads for offline listening. Artist search does not verify channel ownership or identify official artist accounts.
+
+Native queues contain at most 500 items; playback copies are capped at 256 MiB per file. Conversion accepts finished videos up to 30 minutes, with a 96 MiB source cap, 64 MiB output cap and 260-second deadline. Playlist downloads process songs sequentially and fetch metadata in batches of at most 100 plus one lookahead; 100 is no longer a total import limit. Android continues the current download in the background and waits for Sonora to return before continuing remaining songs. These limits do not guarantee every video will work.
 
 Clearing app/site data or uninstalling can delete your library. Browser storage can also be evicted. Keep independent copies of music you want to preserve. No cross-device sync is implemented. Physical Samsung A35, Bluetooth hardware and phone-call interruption remain unverified in the current release.
 

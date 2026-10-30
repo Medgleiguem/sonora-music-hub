@@ -2,6 +2,15 @@
   "appId": "app.sonora.music",
   "appName": "Sonora",
   "webDir": "mobile-dist",
-  "android": { "allowMixedContent": false },
-  "server": { "androidScheme": "https" }
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SystemBars": {
+      "style": "DARK"
+    }
+  }
 }

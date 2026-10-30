@@ -35,9 +35,12 @@ for (const [source, name] of copies) {
   manifest.files[name] = { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
 await copyFile(join(root, 'public/licenses.html'), join(staticFiles, 'licenses.html'));
+// The listing's icon and real app screenshots.
+await cp(join(root, 'mobile/store'), join(staticFiles, 'store'), { recursive: true });
+const updated = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 await cp(join(root, 'public/licenses'), join(staticFiles, 'licenses'), { recursive: true });
 const template = await readFile(join(root, 'mobile/installer.html'), 'utf8');
-await writeFile(join(staticFiles, 'index.html'), template.replaceAll('{{VERSION}}', version)
+await writeFile(join(staticFiles, 'index.html'), template.replaceAll('{{VERSION}}', version).replaceAll('{{UPDATED}}', updated)
   .replaceAll('{{SIZE_MB}}', String(Math.round(manifest.files['sonora-android-arm64.apk'].bytes / 1_000_000)))
   .replaceAll('{{ARM32_SIZE_MB}}', String(Math.round(manifest.files['sonora-android-arm32.apk'].bytes / 1_000_000))));
 const downloadStart = await readFile(join(root, 'mobile/download-start.html'), 'utf8');

@@ -2,26 +2,45 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#0b0b0c">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0c0b0b">
   <meta name="robots" content="noindex, nofollow">
-  <title>Sonora — Starting your Android download</title>
+  <title>Sonora — Downloading</title>
+  <link rel="icon" href="/downloads/store/icon.svg" type="image/svg+xml">
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#0b0b0c;color:#f1f1eb;font:16px/1.65 system-ui}
-    main{max-width:620px;margin:auto;padding:48px 24px 64px}small{color:#bded68}
-    h1{font-size:clamp(32px,7vw,48px);line-height:1.1;letter-spacing:-1.5px;margin:20px 0}
-    p{color:#b5b5b9}a{color:#c0f558}.install{display:block;padding:17px 22px;margin:28px 0;background:#bbf34b;border-radius:14px;color:#14170e;text-decoration:none;font-weight:750;text-align:center}
-    a:focus-visible{outline:3px solid #f1f1eb;outline-offset:4px}
+    :root{--bg:#0c0b0b;--card:#161414;--line:rgba(255,255,255,.08);--text:#f6f2ee;--text-2:#b7afa9;--text-3:#827973;--accent:#ff5f3d;--accent-2:#ff8a5b;--ink:#1d0700}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(70% 50% at 50% 0%,rgba(255,95,61,.22),transparent 70%),var(--bg);color:var(--text);font:16px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+    main{max-width:520px;margin:auto;padding:56px 22px 48px;text-align:center}
+    .icon{width:96px;height:96px;border-radius:22px;box-shadow:0 18px 40px rgba(255,95,61,.35)}
+    small{display:block;margin-top:18px;color:var(--accent-2);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+    h1{margin:8px 0 10px;font-size:clamp(28px,7vw,38px);line-height:1.1;letter-spacing:-.03em;font-weight:850}
+    p{margin:0;color:var(--text-2)}
+    .progress{height:4px;margin:26px auto 0;max-width:280px;border-radius:2px;background:#2a2624;overflow:hidden}.progress span{display:block;height:100%;width:35%;border-radius:2px;background:var(--accent);animation:slide 1.3s ease-in-out infinite}
+    @keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+    .install{display:flex;align-items:center;justify-content:center;height:56px;margin:26px 0 0;border-radius:999px;background:linear-gradient(180deg,var(--accent-2),var(--accent));color:var(--ink);text-decoration:none;font-weight:800;font-size:17px;box-shadow:0 10px 30px rgba(255,95,61,.28)}
+    .steps{margin:28px 0 0;padding:0;list-style:none;display:grid;gap:10px;text-align:left;counter-reset:s}
+    .steps li{counter-increment:s;display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:16px;background:var(--card);border:1px solid var(--line);color:var(--text-2);font-size:15px}
+    .steps li::before{content:counter(s);flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--ink);font-weight:800}
+    .steps strong{color:var(--text)}
+    .back{display:inline-block;margin-top:24px;color:var(--text-2)}
+    a:focus-visible{outline:3px solid #fff;outline-offset:4px}
+    @media(prefers-reduced-motion:reduce){.progress span{animation:none;width:100%}}
   </style>
 </head>
 <body>
   <main>
-    <small>SONORA FOR {{ANDROID_LABEL}}</small>
+    <img class="icon" src="/downloads/store/icon-512.png" alt="Sonora app icon" width="96" height="96">
+    <small>Sonora for {{ANDROID_LABEL}}</small>
     <h1>Starting your download…</h1>
-    <p>Your Android installer should download automatically. If it doesn’t start, tap the button below.</p>
-    <a id="download" class="install" href="./sonora-android-{{ARCH}}.apk" download>Download for {{ANDROID_LABEL}}</a>
-    <p>Open the downloaded APK on your phone and tap Install or Update. Install over your existing app to keep your library.</p>
-    <p><a href="./index.html">Back to installer choices</a></p>
+    <p>The installer downloads to your phone in a moment.</p>
+    <div class="progress" aria-hidden="true"><span></span></div>
+    <a id="download" class="install" href="/downloads/sonora-android-{{ARCH}}.apk" download>Download for {{ANDROID_LABEL}}</a>
+    <ol class="steps">
+      <li><span><strong>Open the downloaded file</strong> from your notifications or Downloads.</span></li>
+      <li><span>If Android asks, <strong>allow installs</strong> from your browser.</span></li>
+      <li><span>Tap <strong>Install</strong>, or <strong>Update</strong> to keep your library.</span></li>
+    </ol>
+    <a class="back" href="/download">Back to Sonora</a>
   </main>
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };

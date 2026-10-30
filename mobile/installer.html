@@ -1,32 +1,212 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0b0c"><title>Sonora — Download for Android</title>
-<meta name="description" content="Your private music library. Listen offline, with background playback and Android media controls.">
-<link rel="canonical" href="https://sonora.gleiguem.com/downloads/index.html">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0c0b0b">
+<title>Sonora — Music for Android</title>
+<meta name="description" content="Search YouTube, paste a Spotify or YouTube link, and keep the music you love. Listen online or offline, with background playback. Free, no ads, no account.">
+<link rel="canonical" href="https://sonora.gleiguem.com/">
+<link rel="icon" href="/downloads/store/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/downloads/store/icon-512.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sonora">
 <meta property="og:locale" content="en_US">
-<meta property="og:url" content="https://sonora.gleiguem.com/downloads/index.html">
-<meta property="og:title" content="Sonora — Download for Android">
-<meta property="og:description" content="Your private music library. Listen offline, with background playback and Android media controls.">
+<meta property="og:url" content="https://sonora.gleiguem.com/">
+<meta property="og:title" content="Sonora — Music for Android">
+<meta property="og:description" content="Search YouTube, paste a Spotify or YouTube link, and keep the music you love. Free, no ads, no account.">
 <meta property="og:image" content="https://sonora.gleiguem.com/sonora-share.jpg">
 <meta property="og:image:secure_url" content="https://sonora.gleiguem.com/sonora-share.jpg">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Sonora — Your music. With you. Dark and green artwork with two illustrated Android music players.">
+<meta property="og:image:alt" content="The Sonora app icon beside two phone screenshots: Home and Now playing.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Sonora — Download for Android">
-<meta name="twitter:description" content="Your private music library. Listen offline, with background playback and Android media controls.">
+<meta name="twitter:title" content="Sonora — Music for Android">
+<meta name="twitter:description" content="Search YouTube, paste a Spotify or YouTube link, and keep the music you love. Free, no ads, no account.">
 <meta name="twitter:image" content="https://sonora.gleiguem.com/sonora-share.jpg">
-<meta name="twitter:image:alt" content="Sonora — Your music. With you. Dark and green artwork with two illustrated Android music players.">
-<style>*{box-sizing:border-box}body{margin:0;background:#0b0b0c;color:#f1f1eb;font:16px/1.65 system-ui}main{max-width:620px;margin:auto;padding:48px 24px 64px}small{color:#bded68}h1{font-size:clamp(32px,7vw,48px);line-height:1.1;letter-spacing:-1.5px;margin:20px 0}p,li{color:#b5b5b9}a{color:#c0f558}.install{display:block;padding:17px 22px;margin:28px 0 8px;background:#bbf34b;border-radius:14px;color:#14170e;text-decoration:none;font-weight:750;text-align:center}.note{font-size:14px}.card{padding:20px;border:1px solid #303034;border-radius:16px;margin-top:28px}.limitation{border-color:#76603d}ol{padding-left:22px}li{margin:12px 0}</style></head>
-<body><main><small>SONORA FOR ANDROID · VERSION {{VERSION}}</small><h1>Your music.<br>With you.</h1><p>Listen to your library with the screen off, control playback from Android, and explore music online.</p><p>Both installers include the full app. Choose 64-bit for most current phones. If Android says it isn't compatible, try the 32-bit installer.</p><a class="install" href="./start-arm64.html">Download for 64-bit Android</a><p class="note">Android 10 or newer · about {{SIZE_MB}} MB</p><a class="install" href="./start-arm32.html">Download for 32-bit Android</a><p class="note">Android 10 or newer · about {{ARM32_SIZE_MB}} MB · Try this if the 64-bit installer says it isn't compatible.</p><p class="note">Install over the existing app to keep your library. Do not uninstall first.</p>
-<ol><li>Download this installer on your Android phone.</li><li>Open the APK. If Android asks, allow installation from this browser, then tap Update or Install.</li><li>Open Sonora and play a saved track or explore an online source. Use content you are authorized to access.</li></ol>
-<div class="card"><strong>New in this version</strong><p>Smaller installers for both 32-bit and 64-bit ARM phones, with clear choices if Android reports an incompatible installer. Each contains the full app with the same features and audio quality.</p><p>Native background audio, Android media controls, queue advancement without the app screen, playback recovery after Activity recreation, cached searches, a maintained extraction engine, and clearer download errors. Existing audio files are copied privately on first playback; the originals stay in your library and the copies need extra storage.</p><p>Downloads save completed songs in Library and Offline. Optional recovery copies go to Downloads/Sonora. The current download continues when you switch apps; return to finish saving and continue playlist downloads.</p></div>
-<div class="card limitation"><strong>YouTube remains connection-dependent</strong><p>YouTube streaming uses an unofficial on-device resolver. In current live tests, both streaming and downloading Julia Boutros “Moqawem” and a short public clip were refused by YouTube's bot checks. This release does not claim those failures are fixed. Search and the native background player work independently of that upstream refusal. A separate real HTTPS catalog stream passed screen-off playback without a saved song.</p></div>
-<div class="card"><strong>Verified on Android 16 emulator</strong><p>This version passed a universal APK update, app launch, 12 native playback/engine checks and 11 JVM tests. Physical ARM phones, including the reported Galaxy A13, still require verification.</p><p>Earlier verification covered Local playback and automatic next-track advancement with the screen off, destroyed Activity recovery, system media controls, real HTTPS streaming, cancellation, bounded file staging, and engine upgrade checks. A physical Samsung A35 remains untested.</p><p>The Android and website libraries are separate. Import existing audio files to move them across. iPhone can use the <a href="https://sonora-music-hub-six.vercel.app">website</a> for imports and playback; this installer is Android only.</p><p><a href="./sonora-android-source.zip">Application source and build instructions</a> · <a href="./licenses.html">Component licenses</a> · <a href="./checksums.json">File checksums</a></p></div>
-<p class="note">Made by <strong>Med Gleiguem</strong> · <a href="https://github.com/Medgleiguem/sonora-music-hub">Open-source project</a> · GPL-3.0</p>
+<meta name="twitter:image:alt" content="The Sonora app icon beside two phone screenshots: Home and Now playing.">
+<style>
+:root{--bg:#0c0b0b;--card:#161414;--card-2:#1f1c1b;--line:rgba(255,255,255,.08);--text:#f6f2ee;--text-2:#b7afa9;--text-3:#827973;--accent:#ff5f3d;--accent-2:#ff8a5b;--ink:#1d0700;--pad:max(20px,calc((100vw - 1040px)/2))}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}h1,h2,h3,p{margin:0}
+.glow{position:absolute;inset:0 0 auto;height:640px;background:radial-gradient(60% 70% at 18% 0%,rgba(255,95,61,.28),transparent 70%),radial-gradient(40% 50% at 90% 10%,rgba(255,138,91,.12),transparent 70%);pointer-events:none;z-index:0}
+main{position:relative;z-index:1}
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:10px var(--pad);background:rgba(12,11,11,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:border-color .2s}
+.bar.scrolled{border-color:var(--line)}
+.bar img{width:32px;height:32px;border-radius:8px}.bar strong{font-weight:750;letter-spacing:-.01em}
+.bar .mini{margin-left:auto;opacity:0;transform:translateY(4px);transition:.2s;pointer-events:none}.bar.scrolled .mini{opacity:1;transform:none;pointer-events:auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:999px;background:linear-gradient(180deg,var(--accent-2),var(--accent));color:var(--ink);font-weight:800;text-decoration:none;cursor:pointer;box-shadow:0 10px 30px rgba(255,95,61,.28)}
+.btn:focus-visible,a:focus-visible,button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.mini{height:36px;padding:0 18px;font-size:14px}
+.hero{padding:28px var(--pad) 8px;display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center}
+.icon{width:104px;height:104px;border-radius:24px;box-shadow:0 18px 40px rgba(255,95,61,.32),inset 0 0 0 1px rgba(255,255,255,.08)}
+.hero h1{font-size:clamp(34px,6vw,52px);line-height:1.04;letter-spacing:-.035em;font-weight:850}
+.dev{margin-top:6px;color:var(--accent-2);font-weight:700;font-size:15px}.dev span{color:var(--text-3);font-weight:500}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.tags span{padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:12.5px;color:var(--text-2)}
+.facts{display:flex;margin:24px var(--pad) 0;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.facts::-webkit-scrollbar{display:none}
+.facts div{flex:1 0 auto;min-width:84px;padding:0 12px;text-align:center;border-left:1px solid var(--line)}.facts div:first-child{border-left:0}
+.facts b{display:block;font-size:16px;font-weight:800}.facts small{display:block;color:var(--text-3);font-size:12px;margin-top:2px;white-space:nowrap}
+.install{padding:22px var(--pad) 6px;display:grid;gap:10px;max-width:calc(560px + 2 * var(--pad))}
+.install .btn{height:58px;font-size:18px}.install .btn svg{width:22px;height:22px}
+.alt{color:var(--text-2);font-size:14px;text-align:center}.alt a{color:var(--text);font-weight:700}
+.keep{color:var(--text-3);font-size:13px;text-align:center}
+section{padding:34px var(--pad) 0}
+h2{font-size:22px;letter-spacing:-.02em;font-weight:800;margin-bottom:14px;display:flex;align-items:baseline;gap:10px}h2 small{font-size:13px;color:var(--text-3);font-weight:600}
+.shots{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 calc(-1 * var(--pad));padding:4px var(--pad) 14px;scroll-padding:0 var(--pad);scrollbar-width:none}
+.shots::-webkit-scrollbar{display:none}
+.shot{flex:0 0 auto;display:block;width:min(68vw,250px);min-width:0;scroll-snap-align:start;border:0;padding:16px 14px 0;border-radius:22px;background:var(--card);color:inherit;text-align:left;cursor:zoom-in;overflow:hidden;font:inherit}
+.shot h3{margin-bottom:14px;font-size:17px;line-height:1.2;letter-spacing:-.015em;font-weight:800;min-height:41px}.shot h3 em{font-style:normal;color:var(--accent-2)}
+.shot img{display:block;width:100%;max-width:100%;height:auto;aspect-ratio:9/20;object-fit:cover;object-position:top;border-radius:18px 18px 0 0;box-shadow:0 -1px 0 rgba(255,255,255,.08),0 20px 40px rgba(0,0,0,.5)}
+.shot:nth-child(3n+1){background:linear-gradient(170deg,#2a1611,#151212 60%)}.shot:nth-child(3n+2){background:linear-gradient(170deg,#1b1a20,#141313 60%)}.shot:nth-child(3n){background:linear-gradient(170deg,#241a12,#151212 60%)}
+.nav{display:none;gap:8px;margin-left:auto}.nav button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer;font-size:18px}
+@media(min-width:800px){.nav{display:flex}}
+.about p{color:var(--text-2);max-width:68ch}.about p+p{margin-top:12px}
+details.more{margin-top:12px}details.more summary{cursor:pointer;color:var(--accent-2);font-weight:700;list-style:none}details.more summary::-webkit-details-marker{display:none}
+details.more[open] summary{margin-bottom:12px}
+.highlights{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.hl{padding:18px;border-radius:18px;background:var(--card);border:1px solid var(--line)}.hl svg{width:26px;height:26px;color:var(--accent-2)}.hl h3{margin-top:12px;font-size:16px;font-weight:800}.hl p{margin-top:4px;color:var(--text-2);font-size:14px}
+.card{padding:20px;border-radius:20px;background:var(--card);border:1px solid var(--line)}
+.new ul{margin:0;padding-left:20px;color:var(--text-2)}.new li{margin:6px 0}.new .ver{color:var(--text-3);font-size:13px;margin-bottom:10px}
+.safety{display:grid;gap:14px}.safety div{display:flex;gap:14px;align-items:flex-start}.safety svg{flex:none;width:22px;height:22px;color:#5fd38d;margin-top:2px}.safety strong{display:block}.safety span{color:var(--text-2);font-size:14px}
+.info{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2px 24px}.info div{padding:12px 0;border-bottom:1px solid var(--line)}.info dt{color:var(--text-3);font-size:13px}.info dd{margin:2px 0 0;font-weight:650}
+.steps{counter-reset:s;display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}.steps div{counter-increment:s;padding:18px;border-radius:18px;background:var(--card);border:1px solid var(--line)}.steps div::before{content:counter(s);display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--ink);font-weight:800;margin-bottom:10px}.steps p{color:var(--text-2);font-size:14px}
+.honest{margin-top:12px;color:var(--text-3);font-size:13.5px}
+footer{padding:44px var(--pad) calc(36px + env(safe-area-inset-bottom));text-align:center;color:var(--text-3);font-size:13px}
+.sig{display:inline-flex;align-items:center;gap:10px;font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase}.sig b{padding:3px 7px;border:1px solid #333;border-radius:6px;color:var(--text-2);letter-spacing:.14em}
+footer nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;margin-top:14px}footer a{color:var(--text-2)}
+.viewer{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.92);padding:20px}.viewer.open{display:flex}.viewer img{max-height:92vh;max-width:100%;border-radius:18px}.viewer button{position:absolute;top:16px;right:16px;width:44px;height:44px;border-radius:50%;border:0;background:#222;color:#fff;font-size:22px;cursor:pointer}
+@media(max-width:520px){.hero{grid-template-columns:1fr;text-align:left}.icon{width:88px;height:88px;border-radius:21px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style></head>
+<body>
+<div class="glow" aria-hidden="true"></div>
+<header class="bar" id="bar"><img src="/downloads/store/icon-512.png" alt=""><strong>Sonora</strong><a class="btn mini" href="/downloads/start-arm64.html" tabindex="-1" aria-hidden="true">Install</a></header>
+<main>
+  <div class="hero">
+    <img class="icon" src="/downloads/store/icon-512.png" alt="Sonora app icon" width="104" height="104">
+    <div>
+      <h1>Sonora</h1>
+      <p class="dev">M/GL <span>· Med Gleiguem</span></p>
+      <div class="tags"><span>Music &amp; Audio</span><span>Android</span><span>Open source</span></div>
+    </div>
+  </div>
+
+  <div class="facts" role="list">
+    <div role="listitem"><b>Free</b><small>No ads</small></div>
+    <div role="listitem"><b>No account</b><small>Library on your phone</small></div>
+    <div role="listitem"><b>{{SIZE_MB}} MB</b><small>Download size</small></div>
+    <div role="listitem"><b>Android 10+</b><small>Requires</small></div>
+    <div role="listitem"><b>{{VERSION}}</b><small>Version</small></div>
+  </div>
+
+  <div class="install">
+    <a class="btn" href="/downloads/start-arm64.html" aria-label="Download for 64-bit Android"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14"/></svg>Install</a>
+    <p class="alt">Older phone? <a href="/downloads/start-arm32.html" aria-label="Download for 32-bit Android">Get the 32-bit version</a> · {{ARM32_SIZE_MB}} MB</p>
+    <p class="keep">Already have Sonora? Install over it to update and keep your library.</p>
+  </div>
+
+  <section aria-labelledby="shots-title">
+    <h2 id="shots-title">Screenshots<span class="nav"><button type="button" data-scroll="-1" aria-label="Previous screenshots">‹</button><button type="button" data-scroll="1" aria-label="Next screenshots">›</button></span></h2>
+    <div class="shots" id="shots">
+      <button class="shot" type="button"><h3>Everything you love, <em>one tap away</em></h3><img src="/downloads/store/01-home.webp" alt="Home: Liked songs, Downloaded, your playlists, recently played and popular songs" loading="lazy" width="720" height="1600"></button>
+      <button class="shot" type="button"><h3>Search <em>any song</em> on YouTube</h3><img src="/downloads/store/02-search.webp" alt="Search results for Fairuz with liked songs" loading="lazy" width="720" height="1600"></button>
+      <button class="shot" type="button"><h3>Paste a <em>Spotify or YouTube</em> link</h3><img src="/downloads/store/03-link.webp" alt="A pasted Spotify playlist with two choices: Add to library or Download" loading="lazy" width="720" height="1600"></button>
+      <button class="shot" type="button"><h3>Playlists that <em>play online</em></h3><img src="/downloads/store/04-playlist.webp" alt="An imported album playing online, with Download and Shuffle" loading="lazy" width="720" height="1600"></button>
+      <button class="shot" type="button"><h3>A player made for <em>the music</em></h3><img src="/downloads/store/05-now-playing.webp" alt="Now playing with artwork, controls, Download, Add to playlist and Queue" loading="lazy" width="720" height="1600"></button>
+      <button class="shot" type="button"><h3>Download once, <em>listen offline</em></h3><img src="/downloads/store/06-downloads.webp" alt="Downloads: an album of 14 songs saved, another added to the library" loading="lazy" width="720" height="1600"></button>
+      <button class="shot" type="button"><h3>Arabic classics, <em>curated</em></h3><img src="/downloads/store/07-classics.webp" alt="Umm Kulthum collection in Arabic classics" loading="lazy" width="720" height="1600"></button>
+      <button class="shot" type="button"><h3>Your library, <em>all in one place</em></h3><img src="/downloads/store/08-library.webp" alt="Library: Liked songs, Downloaded, All songs and playlists" loading="lazy" width="720" height="1600"></button>
+    </div>
+  </section>
+
+  <section class="about" aria-labelledby="about-title">
+    <h2 id="about-title">About this app</h2>
+    <p>Sonora is a music player for the songs you love. Search YouTube for songs, artists and playlists, or paste a YouTube or Spotify link. Like songs and build playlists without downloading anything, then download what you want to hear offline.</p>
+    <details class="more"><summary>Read more</summary>
+      <p>Every pasted playlist gives you two clear choices: add it to your library to play online, or download it to your phone. Spotify playlists, albums and songs are matched on YouTube one by one, and songs that are hard to find get a Search button so you can pick the right version.</p>
+      <p>Music keeps playing with the screen off and from Android's media controls. Shuffle, repeat, a queue, recently played, and curated Arabic classics are built in. Sonora opens full screen, and everything you save stays private on your phone.</p>
+    </details>
+  </section>
+
+  <section aria-labelledby="hl-title">
+    <h2 id="hl-title">Highlights</h2>
+    <div class="highlights">
+      <div class="hl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12.5a7 7 0 0 1 14 0M8.5 15a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="18" r="1"/></svg><h3>Online or offline</h3><p>Stream right away, or download songs and whole playlists for when you have no connection.</p></div>
+      <div class="hl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg><h3>Bring your playlists</h3><p>Paste a Spotify or YouTube playlist, album, Mix or song link, and Sonora does the rest.</p></div>
+      <div class="hl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 9l4 3-4 3z"/></svg><h3>Plays in the background</h3><p>Lock your phone or switch apps. Control playback from the notification and lock screen.</p></div>
+      <div class="hl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/></svg><h3>Likes without downloads</h3><p>Heart any song, even from search. Download your Liked songs later in one tap.</p></div>
+      <div class="hl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><h3>Private by design</h3><p>No account, no ads, no tracking. Your library never leaves your phone.</p></div>
+      <div class="hl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg><h3>Open source</h3><p>Every line is public under GPL-3.0, with checksums for every installer.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="new-title">
+    <h2 id="new-title">What’s new</h2>
+    <div class="card new">
+      <p class="ver">Version {{VERSION}} · {{UPDATED}}</p>
+      <ul>
+        <li>Opens full screen, with a switch in Settings.</li>
+        <li>Shuffle starts on a random song, and the screen no longer drifts sideways.</li>
+        <li>Spotify imports find many more songs, including Arabic titles spelled in different ways.</li>
+        <li>Songs start the moment you tap them, and downloaded songs start faster.</li>
+        <li>Songs an import can’t find get a Search button to choose the right version.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section aria-labelledby="safety-title">
+    <h2 id="safety-title">Data safety</h2>
+    <div class="card safety">
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg><p><strong>No data collected by the app</strong><span>No analytics, ads or trackers are built into Sonora for Android.</span></p></div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg><p><strong>No account</strong><span>Likes, playlists and downloads are stored only on your phone. Uninstalling removes them.</span></p></div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg><p><strong>Direct connections</strong><span>Searches and music come straight from YouTube, and pasted Spotify links are read from Spotify, under their own terms.</span></p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="info-title">
+    <h2 id="info-title">App info</h2>
+    <dl class="info">
+      <div><dt>Version</dt><dd>{{VERSION}}</dd></div>
+      <div><dt>Updated</dt><dd>{{UPDATED}}</dd></div>
+      <div><dt>Download size</dt><dd>{{SIZE_MB}} MB · 32-bit {{ARM32_SIZE_MB}} MB</dd></div>
+      <div><dt>Requires</dt><dd>Android 10 or newer</dd></div>
+      <div><dt>Price</dt><dd>Free, no ads, no in-app purchases</dd></div>
+      <div><dt>Permissions</dt><dd>Internet, notifications, background playback and downloads</dd></div>
+      <div><dt>Developer</dt><dd>M/GL · Med Gleiguem</dd></div>
+      <div><dt>License</dt><dd><a href="https://github.com/Medgleiguem/sonora-music-hub">GPL-3.0 · source code</a></dd></div>
+    </dl>
+  </section>
+
+  <section aria-labelledby="how-title">
+    <h2 id="how-title">How to install</h2>
+    <div class="steps">
+      <div><strong>Download</strong><p>Tap Install on your Android phone. The installer downloads to your phone.</p></div>
+      <div><strong>Open it</strong><p>Open the downloaded file. If Android asks, allow installs from your browser.</p></div>
+      <div><strong>Install</strong><p>Tap Install, or Update to keep your library. Then open Sonora and start listening.</p></div>
+    </div>
+    <p class="honest">Sonora is installed from this page, not from an app store. Music comes from YouTube and depends on YouTube’s connection: some songs can take a moment to start or may be unavailable. Only download content you have the right to use.</p>
+  </section>
 </main>
-<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<footer>
+  <span class="sig">Sonora <b>M/GL</b></span>
+  <nav><a href="/app">Use on the web</a><a href="/downloads/sonora-android-source.zip">Source code</a><a href="/downloads/licenses.html">Licenses</a><a href="/downloads/checksums.json">Checksums</a></nav>
+</footer>
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Screenshot"><img alt=""><button type="button" aria-label="Close">×</button></div>
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  var bar = document.getElementById('bar'), shots = document.getElementById('shots'), viewer = document.getElementById('viewer');
+  var onScroll = function () { bar.classList.toggle('scrolled', window.scrollY > 220); };
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  document.querySelectorAll('[data-scroll]').forEach(function (button) {
+    button.addEventListener('click', function () { shots.scrollBy({ left: Number(button.dataset.scroll) * shots.clientWidth * 0.8, behavior: 'smooth' }); });
+  });
+  var close = function () { viewer.classList.remove('open'); };
+  shots.addEventListener('click', function (event) {
+    var shot = event.target.closest('.shot'); if (!shot) return;
+    var image = shot.querySelector('img'); viewer.querySelector('img').src = image.src; viewer.querySelector('img').alt = image.alt;
+    viewer.classList.add('open'); viewer.querySelector('button').focus();
+  });
+  viewer.addEventListener('click', function (event) { if (event.target !== viewer.querySelector('img')) close(); });
+  document.addEventListener('keydown', function (event) { if (event.key === 'Escape') close(); });
+</script>
 <script defer src="/_vercel/insights/script.js"></script>
 </body></html>

@@ -7,9 +7,9 @@ destination = root / 'mobile-artifacts' / 'sonora-android-source.zip'
 destination.parent.mkdir(exist_ok=True)
 folders = ['src', 'app', 'lib', 'mobile', 'android', 'scripts', 'tests', 'docs', 'public', 'tasks', '.github']
 files = ['package.json', 'package-lock.json', 'capacitor.config.json', 'next.config.mjs', 'playwright.config.js', 'vercel.json', 'README.md', 'DEPLOYMENT.md', 'LICENSE', 'CONTRIBUTING.md', 'CODE_OF_CONDUCT.md', 'SECURITY.md', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', '.nvmrc', '.env.example', '.gitattributes', '.gitignore', '.vercelignore']
-excluded_parts = {'build', '.gradle', '.idea', 'node_modules', 'capacitor-cordova-android-plugins', 'downloads', '__pycache__'}
+excluded_parts = {'build', '.gradle', '.idea', 'node_modules', 'capacitor-cordova-android-plugins', 'downloads', '__pycache__', 'lite-media'}
 excluded_names = {'local.properties', 'keystore.properties', 'google-services.json', 'capacitor.config.json', 'capacitor.plugins.json', 'config.xml'}
-excluded_suffixes = {'.apk', '.aab', '.aar', '.jks', '.keystore', '.log', '.pyc', '.zip'}
+excluded_suffixes = {'.apk', '.aab', '.aar', '.jks', '.keystore', '.log', '.pyc', '.zip', '.orig', '.rej'}
 
 selected = [root / file for file in files if (root / file).is_file()]
 for folder in folders:

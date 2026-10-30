@@ -1,0 +1,15 @@
+# Android 1.4.0 — 2026-10-27
+
+VersionCode 7 combines the YouTube Mix fix, completed Spotify import, and native playback startup improvements. Both ARM installers retain the existing release certificate and Android 10+ support. Install over the existing app to preserve its local library.
+
+Video-seeded Mixes are opened through their seed watch page and imported as a snapshot of up to 100 source positions. Saved public/unlisted playlists retain pagination beyond 100. The reported `RDuSiHqxgE2d0` link was read by the Android plugin, two real MP3s were added to its Sonora playlist, and audio played after reopening with Wi-Fi/mobile data disabled. The first test on a constrained fresh emulator timed out during conversion; the repeated test on a 4 GB emulator completed. This does not establish that every song in a Mix will download. Full details and the live smoke-test command are in [youtube-mix-import.md](youtube-mix-import.md).
+
+Spotify public playlist, album, individual-song, and copied-song inputs match available YouTube audio before downloading. Artist evidence is required and unrequested recording variants are rejected. Public Spotify playlist embeds expose up to 100 songs; copied song links can add more in batches of up to 2,000. This is metadata matching, not Spotify audio extraction, and matches can remain unavailable.
+
+Playback uses a direct native resolver, an isolated speculative extractor stage, and the compatibility extractor. Cached or fast-client addresses refused with HTTP 403/410 get one forced compatibility retry. All stages preserve cancellation; resolution work uses a shared deadline rather than extending the timeout at each fallback. Upcoming YouTube tracks can be prepared after the current audio starts. Validated stream addresses remain only in private memory, with bounded cache size and signed-expiry checks.
+
+The combined build passed 58 Node tests, 33 deterministic Android instrumentation checks, and 13 JVM tests. The import/browser suite passed 33 tests locally; its two hosted-only checks are separate. Both signed ARM installers match the previously published certificate. The production dependency audit reports zero known vulnerabilities. Physical ARM phones, Bluetooth hardware, and phone-call interruption behavior remain unverified.
+
+The complete existing website is staged with both signed APKs, matching application source, licenses, and SHA-256 manifest before promotion. Previous production deployment `dpl_BS74zrxd18D5Mvjx8Q12BWQ3PeGZ` remains available for rollback. No signing-key changes or new paid services are needed.
+
+Independent final-build observations on the 4 GB Android 16 emulator: two first stream starts completed in 2,076 ms and 1,631 ms; repeats took 1,491 ms and 1,651 ms. Fresh searches returned 24 results in 2,783 / 1,118 / 1,083 ms. These are measurements on one emulator/connection; downloads still perform extraction and conversion and can take longer. Raw observations: `mobile-artifacts/performance-1.4-final.json`.

@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server.js';
 import { lookupYoutube } from '../../../../lib/media.mjs';
 import { publicMediaError } from '../../../../lib/youtube-input.mjs';
+import { searchType, searchSource, catalogEntries } from '../../../../lib/youtube-catalog.mjs';
 
 export const maxDuration = 60;
 
@@ -11,20 +12,27 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const term = searchParams.get('q')?.trim() || '';
   const region = (searchParams.get('region') || process.env.YOUTUBE_REGION || 'US').toUpperCase();
-  const key = process.env.YOUTUBE_API_KEY?.trim();
+  // Spotify matching runs one search per song; keep it off the Data API quota.
+  const match = searchParams.get('match') === '1';
+  const key = match ? '' : process.env.YOUTUBE_API_KEY?.trim();
+  let type;
+  try { type = searchType(searchParams.get('type')); }
+  catch (error) { return NextResponse.json({ error: error.message }, { status: 400 }); }
   if (term.length > 200 || !/^[A-Z]{2}$/.test(region)) return NextResponse.json({ error: 'Enter a search of up to 200 characters and a two-letter region.' }, { status: 400 });
   if (!key) {
     try {
       const query = term || `popular music ${region}`;
-      const data = await lookupYoutube(`ytsearch24:${query}`, { signal: request.signal });
+      const data = await lookupYoutube(searchSource(query, type), { signal: request.signal, type, limit: match ? 10 : 24 });
       return NextResponse.json({ results: data.entries }, { headers: { 'Cache-Control': 'private, max-age=60' } });
     } catch (error) { return NextResponse.json({ error: publicMediaError(error) }, { status: 502 }); }
   }
 
   try {
-    const params = new URLSearchParams({ key, part: 'snippet', maxResults: '24', type: 'video', videoCategoryId: '10' });
+    const params = new URLSearchParams({ key, part: 'snippet', maxResults: '24', type: type === 'artist' ? 'channel' : type });
+    if (type === 'video') params.set('videoCategoryId', '10');
     if (term) params.set('q', term);
-    else { params.set('order', 'viewCount'); params.set('regionCode', region); }
+    else if (type === 'video') { params.set('order', 'viewCount'); params.set('regionCode', region); }
+    else params.set('q', `popular music ${region}`);
     const response = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`, { signal: AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]), next: { revalidate: term ? 0 : 300 } });
     const data = await response.json();
     if (!response.ok) {
@@ -35,7 +43,13 @@ export async function GET(request) {
       return NextResponse.json({ error: message, code: quotaLimited ? 'YOUTUBE_QUOTA_EXHAUSTED' : 'YOUTUBE_SEARCH_FAILED' }, { status: response.status });
     }
 
-    const videoIds = data.items.map((item) => item.id?.videoId).filter(Boolean);
+    if (type !== 'video') {
+      const entries = (data.items || []).map(item => ({ id: type === 'artist' ? item.id?.channelId : item.id?.playlistId,
+        title: decodeHtml(item.snippet?.title), channel: decodeHtml(item.snippet?.channelTitle),
+        thumbnail: item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.medium?.url }));
+      return NextResponse.json({ results: catalogEntries({ entries }, type) }, { headers: { 'Cache-Control': 'private, max-age=60' } });
+    }
+    const videoIds = (data.items || []).map((item) => item.id?.videoId).filter(Boolean);
     if (!videoIds.length) return NextResponse.json({ results: [] });
     const detailParams = new URLSearchParams({ key, part: 'contentDetails,status', id: videoIds.join(',') });
     const detailResponse = await fetch(`https://www.googleapis.com/youtube/v3/videos?${detailParams}`, { cache: 'no-store', signal: AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]) });

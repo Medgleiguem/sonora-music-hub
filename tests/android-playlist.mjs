@@ -51,32 +51,33 @@ try {
       if (plugin === 'SonoraMedia' && method === 'download') {
         window.__nativeDownloadCount++;
         const result = original(plugin, method, options);
-        if (window.__holdNativeTransfer) return result.then(value => new Promise(resolve => { window.__resumeNativeTransfer = () => resolve(value); }));
+        // Several songs download at once; every finished transfer is held until the test releases them.
+        if (window.__holdNativeTransfer) return result.then(value => new Promise(resolve => {
+          (window.__heldTransfers ||= []).push(() => resolve(value));
+          window.__resumeNativeTransfer = () => window.__heldTransfers.splice(0).forEach(release => release());
+        }));
         return result;
       }
       return original(plugin, method, options);
     };
   });
   const start = async format => {
-    await page.getByRole('button', { name: 'Download', exact: true }).click();
-    await page.getByLabel('YouTube video or playlist URL').fill('https://www.youtube.com/playlist?list=PLsonoraRegression123');
+    await page.getByRole('button', { name: /^Download/ }).last().click();
+    if (await page.getByRole('button', { name: 'New download', exact: true }).isVisible()) await page.getByRole('button', { name: 'New download', exact: true }).click();
+    await page.getByLabel('YouTube or Spotify link').fill('https://www.youtube.com/playlist?list=PLsonoraRegression123');
     await page.getByLabel('Audio format', { exact: true }).selectOption(format);
     await page.getByRole('checkbox', { name: /I have the right/ }).check();
     await page.getByRole('checkbox', { name: /Also keep/ }).uncheck();
-    await page.getByRole('button', { name: /^(Download playlist|Retry download)$/ }).click();
+    await page.getByRole('button', { name: 'Download playlist', exact: true }).click();
   };
   await start('opus');
-  await expect.poll(() => page.evaluate(() => window.__nativeDownloadCount)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__nativeDownloadCount)).toBeGreaterThanOrEqual(1);
   adb('shell', 'input', 'keyevent', '3');
-  await expect(page.getByText('Playlist paused until you return', { exact: true })).toBeVisible({ timeout: 90000 });
-  await new Promise(resolve => setTimeout(resolve, 250));
-  await expect(page.getByText('Playlist paused until you return', { exact: true })).toBeVisible();
-  expect(await page.evaluate(() => window.__nativeDownloadCount)).toBe(1);
+  // Leaving Sonora no longer pauses a playlist: every song finishes while the app is in the background.
+  await expect.poll(() => page.evaluate(() => window.__nativeDownloadCount), { timeout: 90000 }).toBe(2);
+  await expect(page.getByText('Download complete', { exact: true })).toBeVisible({ timeout: 120000 });
   adb('shell', 'am', 'start', '-n', 'app.sonora.music/.MainActivity');
-  await expect.poll(() => page.evaluate(() => window.__nativeDownloadCount)).toBe(2);
-  await page.getByRole('button', { name: 'Cancel download', exact: true }).click();
-  await expect(page.getByText('Download cancelled', { exact: true })).toBeVisible();
-  console.log('PASS: a background playlist finishes its current track, waits, and resumes only after Activity foreground');
+  console.log('PASS: a playlist keeps downloading and saving while Sonora is in the background');
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
   await page.evaluate(() => { window.__nativeDownloadCount = 0; window.__holdNativeTransfer = true; });
   await start('m4a');
@@ -84,7 +85,7 @@ try {
   adb('shell', 'cmd', 'statusbar', 'expand-notifications');
   adb('shell', 'uiautomator', 'dump', '/sdcard/sonora-notification.xml');
   let xml = adb('shell', 'cat', '/sdcard/sonora-notification.xml');
-  let bounds = xml.match(/text="Cancel"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/i);
+  let bounds = xml.match(/text="Cancel all"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/i);
   if (!bounds) {
     const notification = xml.slice(xml.indexOf('text="Saving your music"'));
     const expand = notification.match(/content-desc="Expand"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);
@@ -92,22 +93,23 @@ try {
       adb('shell', 'input', 'tap', String((Number(expand[1]) + Number(expand[3])) / 2), String((Number(expand[2]) + Number(expand[4])) / 2));
       adb('shell', 'uiautomator', 'dump', '/sdcard/sonora-notification.xml');
       xml = adb('shell', 'cat', '/sdcard/sonora-notification.xml');
-      bounds = xml.match(/text="Cancel"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/i);
+      bounds = xml.match(/text="Cancel all"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/i);
     }
   }
-  if (!bounds) throw new Error('Download notification Cancel action was not visible.');
+  if (!bounds) throw new Error('Download notification Cancel all action was not visible.');
   adb('shell', 'input', 'tap', String((Number(bounds[1]) + Number(bounds[3])) / 2), String((Number(bounds[2]) + Number(bounds[4])) / 2));
   adb('shell', 'cmd', 'statusbar', 'collapse');
   await page.evaluate(() => window.__resumeNativeTransfer());
-  await expect(page.getByText('Download cancelled', { exact: true })).toBeVisible();
-  expect(await page.evaluate(() => window.__nativeDownloadCount)).toBe(1);
-  console.log('PASS: the actual Android notification Cancel action stops the complete playlist');
+  await expect(page.getByText('Stopped', { exact: true })).toBeVisible();
+  // Both songs may have started together; nothing starts after the cancellation.
+  expect(await page.evaluate(() => window.__nativeDownloadCount)).toBeLessThanOrEqual(2);
+  console.log('PASS: the actual Android notification Cancel all action stops the playlist');
 } finally {
   adb('shell', 'cmd', 'statusbar', 'collapse');
   await page.evaluate(async () => {
     const media = window.Capacitor.Plugins.SonoraMedia;
-    const { job } = await media.pendingDownload();
-    if (job && /jNQXAC9IVRw|M7lc1UVf-VE/.test(job.url)) { await media.cancel({ id: job.id }); await media.release({ id: job.id }); }
+    const { jobs = [] } = await media.pendingDownload();
+    for (const job of jobs) if (/jNQXAC9IVRw|M7lc1UVf-VE/.test(job.url)) { await media.cancel({ id: job.id }); await media.release({ id: job.id }); }
   }).catch(() => {});
   await browser.close();
 }

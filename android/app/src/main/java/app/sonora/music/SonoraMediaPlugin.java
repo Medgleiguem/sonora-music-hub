@@ -29,8 +29,22 @@ public class SonoraMediaPlugin extends Plugin {
         if (!DownloadService.hasJob()) media.clearOldFiles();
     }
 
+    @PluginMethod public void setFullscreen(PluginCall call) {
+        boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", true));
+        getContext().getSharedPreferences(MainActivity.UI_PREFERENCES, android.content.Context.MODE_PRIVATE).edit().putBoolean(MainActivity.FULLSCREEN, enabled).apply();
+        getActivity().runOnUiThread(() -> {
+            if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).applyFullscreen();
+            call.resolve(new JSObject().put("enabled", enabled));
+        });
+    }
+    @PluginMethod public void fullscreen(PluginCall call) {
+        call.resolve(new JSObject().put("enabled", getContext().getSharedPreferences(MainActivity.UI_PREFERENCES, android.content.Context.MODE_PRIVATE).getBoolean(MainActivity.FULLSCREEN, true)));
+    }
     @PluginMethod public void search(PluginCall call) { lookup(call, false); }
     @PluginMethod public void playlist(PluginCall call) { lookup(call, true); }
+    @PluginMethod public void spotify(PluginCall call) {
+        run(call, process -> new JSONObject().put("data", SpotifyEmbed.load(call.getString("kind", ""), call.getString("spotifyId", ""), process)));
+    }
     @PluginMethod public void download(PluginCall call) {
         if (android.os.Build.VERSION.SDK_INT >= 33 && getPermissionState("notifications") != PermissionState.GRANTED
             && !getContext().getSharedPreferences("sonora", 0).getBoolean("notificationAsked", false)) {
@@ -55,11 +69,27 @@ public class SonoraMediaPlugin extends Plugin {
                     else call.resolve(JSObject.fromJSONObject(result));
                 } catch (org.json.JSONException invalid) { call.reject("Could not read the downloaded file. Please retry."); }
             });
-        } catch (Exception error) { call.reject(error.getMessage()); }
+        } catch (DownloadService.StartRefused error) { call.reject(error.getMessage(), "BACKGROUND_START"); }
+        catch (Exception error) { call.reject(error.getMessage()); }
+    }
+
+    /** Keeps the download service running for a whole download, so leaving Sonora mid-playlist is safe. */
+    @PluginMethod public void hold(PluginCall call) {
+        try { media.folder(call.getString("id")); DownloadService.hold(getContext(), call.getString("id")); call.resolve(); }
+        catch (DownloadService.StartRefused error) { call.reject(error.getMessage(), "BACKGROUND_START"); }
+        catch (Exception error) { call.reject(error.getMessage()); }
+    }
+
+    @PluginMethod public void unhold(PluginCall call) {
+        DownloadService.unhold(call.getString("id", ""));
+        call.resolve();
     }
 
     @PluginMethod public void pendingDownload(PluginCall call) {
-        try { call.resolve(new JSObject().put("job", DownloadService.pending())); }
+        try {
+            org.json.JSONArray jobs = DownloadService.pending();
+            call.resolve(new JSObject().put("job", jobs.length() > 0 ? jobs.get(0) : null).put("jobs", jobs).put("running", DownloadService.isRunning()));
+        }
         catch (Exception error) { call.reject("Could not restore the download. Please retry."); }
     }
 
@@ -72,7 +102,17 @@ public class SonoraMediaPlugin extends Plugin {
     void emitProgress(JSONObject event) throws org.json.JSONException { notifyListeners("progress", JSObject.fromJSONObject(event)); }
     void emitCancellation(String id) { notifyListeners("downloadCancelled", new JSObject().put("id", id)); }
 
+    private interface Lookup { JSONObject load(MediaProcess process) throws Exception; }
+
     private void lookup(PluginCall call, boolean playlist) {
+        run(call, process -> {
+            double start = call.getData().optDouble("start", 1);
+            if (!Double.isFinite(start) || start != Math.floor(start)) throw new IllegalArgumentException("Choose a valid playlist position.");
+            return media.lookup(call.getString(playlist ? "url" : "query", ""), playlist, call.getString("type", "video"), (long) start, process);
+        });
+    }
+
+    private void run(PluginCall call, Lookup lookup) {
         String id = call.getString("id");
         try { media.folder(id); } catch (Exception error) { call.reject(error.getMessage()); return; }
         if (lookups.incrementAndGet() > 2) {
@@ -83,7 +123,7 @@ public class SonoraMediaPlugin extends Plugin {
             lookups.decrementAndGet(); call.reject("This task is already running."); return;
         }
         workers.execute(() -> {
-            try { call.resolve(JSObject.fromJSONObject(media.lookup(call.getString(playlist ? "url" : "query", ""), playlist, process))); }
+            try { call.resolve(JSObject.fromJSONObject(lookup.load(process))); }
             catch (Exception error) {
                 if (error instanceof MediaProcess.Failure) call.reject(error.getMessage(), ((MediaProcess.Failure) error).code);
                 else call.reject(error instanceof IllegalArgumentException || error instanceof IOException ? error.getMessage() : "Could not complete this search. Please retry.");
@@ -96,7 +136,7 @@ public class SonoraMediaPlugin extends Plugin {
         String id = call.getString("id", "");
         MediaProcess process = running.get(id);
         if (process != null) process.cancel("Search cancelled.");
-        DownloadService.cancel(id, "Download cancelled. Saved tracks are kept.");
+        DownloadService.cancel(id, "Download cancelled. Saved tracks are kept.", false);
         call.resolve();
     }
 

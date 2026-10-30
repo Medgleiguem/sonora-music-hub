@@ -148,3 +148,95 @@ Published the complete website as deployment `dpl_FZ2GNi5o5nHrgzuWFzCr7n7SNGkt` 
 The initial universal APK exceeded Vercel Hobby's 100 MB file limit and the upload was rejected before promotion. At the user's request, the website now offers the complete architecture-specific installers: arm64 is 72,617,983 bytes and arm32 is 65,965,167 bytes. Both have prominent download buttons and compatibility guidance. The legacy `/downloads/sonora-android.apk` URL still serves arm64. No GitHub Release or additional hosting service was created. Native features, dependencies, audio settings and signing are unchanged.
 
 Verification: 29 Node tests passed. Candidate browser verification passed 14 checks covering imports, local playback, playback position, offline reopening, library rendering, storage recovery, mobile layout and the hosted Android download flow. The installer was inspected at 320, 412 and 1440 pixels. After promotion, both hosted download-flow tests and all three installer widths passed without an authenticated session. Public HTTP checks verified page version, main website availability, APK content types and sizes, and the `/android` redirect. Full downloads of both ARM installers, the legacy APK URL and the application source archive matched the locally generated SHA-256 manifest exactly. Physical ARM-device installation still requires verification; the friend's reported architecture is not confirmed by the screenshots alone.
+
+
+## Android 1.3.0 performance and playlists — 2026-10-26
+
+Published deployment `dpl_BS74zrxd18D5Mvjx8Q12BWQ3PeGZ` (`https://sonora-music-dylzltgsy-meds-projects-9af78741.vercel.app`) after staging checks. Public installer: https://sonora.gleiguem.com/android . The original https://sonora-music-hub-six.vercel.app address serves the same release. Previous production deployment `dpl_EPJBsuTTNmNhkE8mbRfuJezokJwE` is retained for rollback. No paid plan, new hosting service, signing-key change, or GitHub release was introduced.
+
+Version 1.3.0/versionCode 6 includes the approved playlist/artist features and measured native search/replay improvements. Fresh 24-result emulator queries measured 1.0–1.7 seconds versus 6.2–12.9 seconds; fully warm queries measured 6–8 ms in a follow-up. Reopening a successful stream measured about 1.3 seconds versus about 39 seconds. Cold first playback remains dependent on extraction and YouTube responses. Detailed evidence and rejected experiments are in `docs/performance-1.3.md`.
+
+Both ARM APKs verify against the previous public certificate, retaining the in-place update path. Anonymous full downloads of both installers and the source archive matched the local SHA-256 manifest. The source archive and client assets were checked for nine private configuration values; none were found. Source and signing credentials remain separate.
+
+| Public artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `sonora-android-arm64.apk` | 72714431 | `de91ff62c25f7dbfaa24fb58dd1c6922a808b9926f84d7be8185805269962762` |
+| `sonora-android-arm32.apk` | 66061619 | `17b8e2d0138856ade4f1d02e91e6378c9a67ea982168549f7a7395a00c5ebdf4` |
+| `sonora-android-source.zip` | 619527 | `f5e710884eeaeba109cf3af1b2ec2eec37b757e9d54f38f51d6a0d77e1c2f238` |
+
+The legacy `sonora-android.apk` remains an arm64 alias. Both ARM files remain below the hosting file-size limit. Staged manifest, home page, installer and APK headers passed checks through authenticated Vercel requests; canonical public domains were verified without authentication after promotion.
+
+Validation: 45 Node tests; 30 local production browser checks plus both anonymous hosted download checks; 22 deterministic Android instrumentation checks on the Android 16 x86_64 emulator; 11 JVM tests; web/mobile/signed release builds; matching signatures and version metadata. Physical ARM hardware remains unverified. Next.js was updated to 16.4.1 after release auditing found advisories in the prior dependency range; the final production npm audit reports zero known vulnerabilities.
+
+
+## 1.4.0 combined release — 2026-10-27
+
+Published deployment `dpl_8ogWR8JpBXN2MMfBhkkoukmauhB8` (`https://sonora-music-k3xk6pi8a-meds-projects-9af78741.vercel.app`) to the existing public domains after staged home, installer, manifest and both APK-header checks. VersionCode 7 combines the video-seeded Mix fix, Spotify import, and finished native playback improvements. The previous 1.3.0 deployment `dpl_BS74zrxd18D5Mvjx8Q12BWQ3PeGZ` is retained for rollback.
+
+Both ARM installers preserve the existing certificate. Anonymous full downloads of both APKs and application source matched the release manifest. Both hosted browser checks passed. Local validation: 58 Node tests; 33 full browser checks plus 13 focused final production browser checks; 33 deterministic Android instrumentation checks; 13 JVM tests. The exact Mix yielded 100 entries, two real MP3s were saved into its local playlist and played after offline reopen; the final combined APK retained them during its in-place update. Two independently measured first stream starts completed in 1.63–2.08 seconds on the emulator. Physical ARM phone behavior remains unverified.
+
+The production dependency audit reported zero vulnerabilities, and five configured private values were absent from the packaged application source and generated client assets. No Git commit, push, or GitHub release was performed.
+
+| Artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `sonora-android-arm64.apk` | 72729583 | `2bc4a300efb95a00a4300fb23b3c3b266c6ba455ed2a2373c3b6846a51b96070` |
+| `sonora-android-arm32.apk` | 66076767 | `4272fd6cfe9d76c6651fa19b2a088cac3d8d99e69457e0a7f647c5326c620abc` |
+| `sonora-android-source.zip` | 647504 | `14c59c84210e871b36359bf224f775f92f33960c88375811eeb99a176224babe` |
+
+## 1.5.0 downloads and online library — 2026-10-27
+
+Published deployment `dpl_2YTHpXZainPb7jmWCAQRqcuZ1HXR` (`https://sonora-music-7mr2papf1-meds-projects-9af78741.vercel.app`) to the existing public domains after staged checks of the home page, installer page, manifest, and full downloads of both APKs and the source archive. VersionCode 8 adds online playlists, likes without downloading, concurrent downloads with Stop/Resume, background Android downloads, and a direct download path. The previous 1.4.0 deployment `dpl_8ogWR8JpBXN2MMfBhkkoukmauhB8` is retained for rollback.
+
+Both ARM installers keep the existing certificate (`acc829c5…cfa9`); an in-place update from the published 1.4.0 arm64 APK preserved the library. Anonymous full downloads from https://sonora.gleiguem.com matched the release manifest, and 9 hosted browser checks passed. Local validation: 68 Node tests; 38 production browser checks (2 hosted-only skipped locally); 17 JVM tests; 40 instrumentation tests; emulator flows for a real download and export, offline playback, a playlist finishing in the background, a real YouTube Mix stopped partway, and Activity recovery. The emulator's ARM translation cannot run the bundled ARM media executables (the published 1.4.0 runtime is affected identically), so ARM media was checked statically: the pruned arm64 runtime removes the same 59 files as the tested x86_64 runtime and breaks no dynamic-link dependency. Physical ARM phone behavior remains unverified.
+
+The source archive now excludes the ignored `android/lite-media/` build output. Private configuration values were absent from the source archive and client assets; the only match was the public Jamendo client ID used by the browser. No Git commit, push, or GitHub release was performed.
+
+| Artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `sonora-android-arm64.apk` | 65531175 | `0333171a84e46638ac528b42beb59dc68fd35da28abeeaee74afcf9b1e58f2b2` |
+| `sonora-android-arm32.apk` | 59563051 | `517543b93df52bb1e3581479fbbf3e5544ca951c45797ab66e296d89858ef251` |
+| `sonora-android-source.zip` | 680658 | `15844af16ce20ca37081a7852150667c53d747e8921b8c52c007d384c696a10a` |
+
+## 1.6.0 redesign, Spotify fix and online imports — 2026-10-28
+
+Published deployment `dpl_Eno7H3xWTQWV75Dr6vo3CfE2pv9n` (`https://sonora-music-b8114ph8n-meds-projects-9af78741.vercel.app`) to the existing public domains after staged checks (via authenticated `vercel curl`) of the home page, installer page, checksums, and full downloads of both APKs and the source archive. The previous 1.5.0 deployment `dpl_2YTHpXZainPb7jmWCAQRqcuZ1HXR` (`https://sonora-music-7mr2papf1-meds-projects-9af78741.vercel.app`) is retained for rollback with `vercel promote`.
+
+VersionCode 9 replaces the interface with a three-tab phone design (Home, Search, Library), removes the Jamendo catalog, fixes Spotify downloads, and adds online (no-download) imports for Spotify. Root cause of the Spotify failures: Android allows two concurrent searches and refused the rest with "Search is busy", while downloads matched three songs at once with no retry. Matching is now serialized, temporary errors are retried with backoff, leftover songs get one final pass, and interrupted downloads resume when Sonora reopens. On the x86_64 emulator a real 14-song Spotify album went from 2 of 14 saved to 14 of 14 without Resume; a real 13-song album was added for online listening and streamed.
+
+Both ARM installers keep the existing certificate (`acc829c5…cfa9`); an in-place update from the published 1.5.0 arm64 APK preserved its liked songs. Anonymous full downloads from https://sonora.gleiguem.com matched the manifest and 9 hosted browser checks passed. Local validation: 72 Node tests and 37 browser checks (2 hosted-only skipped). Private configuration values were absent from the source archive and app bundle (12 checked); the Jamendo client ID is no longer shipped. Physical ARM phone behavior remains unverified. No Git commit, push, or GitHub release was performed.
+
+| Artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `sonora-android-arm64.apk` | 65525911 | `5faaac8c5b54bcabd06b94c3b78ccd76e3193142171eb195e35a49774ef89f5c` |
+| `sonora-android-arm32.apk` | 59557791 | `50142849d06b7cde332878a65fe65fc28f71518ec1487d8e3c12ac1d17d749ef` |
+| `sonora-android-source.zip` | 688129 | `6bf2fcad4c0d282f6de2acdbb6035d431a2f33e62d0b934e70953065587940de` |
+
+## 1.7.0 polish and fixes — 2026-10-28
+
+Published deployment `dpl_EfwKvRPwo7Z1pn8ztWdPTmixnQRE` (`https://sonora-music-f4xtvdmwk-meds-projects-9af78741.vercel.app`) after staged checks of checksums, full downloads of both APKs and the source archive, the installer page, and the home page. The previous 1.6.0 deployment `dpl_Eno7H3xWTQWV75Dr6vo3CfE2pv9n` is retained for rollback.
+
+VersionCode 10 fixes Shuffle (the Detail button passed the click event instead of the list), sideways scrolling (unclipped blurred backdrops and pinch zoom), the tab bar vanishing after typing (now keyed to the keyboard actually being open), and Spotify matching for transliterated titles (spelling-tolerant words plus a close-length fallback). It adds Android full screen with a Settings switch, an immediate loading state, 1 MiB native staging pieces, Search buttons for unmatched songs, and the M/GL signature. Same certificate (`acc829c5…cfa9`); an in-place update from the published 1.6.0 kept its library. Anonymous public downloads matched the manifest and 9 hosted checks passed. Local validation: 75 Node tests, 38 browser checks (2 hosted-only skipped), JVM unit tests. Physical ARM phone behavior remains unverified.
+
+| Artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `sonora-android-arm64.apk` | see checksums.json | `b444fc1e7c8f1a3de834c723ecd7897411963ce5ceaf7a42667588b3a1d861c5` |
+| `sonora-android-arm32.apk` | see checksums.json | `bb84b7d9ba3d4d425e605ac7d780901dfc0271614abd4cc969e03186adc5eed8` |
+| `sonora-android-source.zip` | see checksums.json | `5a9ea7cc666eb6bf677b13a7365ba45cf14f3a5e41e4a9557768de847db18d09` |
+
+## 1.7.1 icon and store-style listing — 2026-10-28
+
+Published deployment `dpl_H4zcVE9qCQsHdFFQrXUSADhedA3v` (`https://sonora-music-ncuougfe2-meds-projects-9af78741.vercel.app`) after staged checks of both APKs and the source archive, the listing page, its ten store assets, and the share image. The previous 1.7.0 deployment `dpl_EfwKvRPwo7Z1pn8ztWdPTmixnQRE` is retained for rollback.
+
+VersionCode 11 replaces the leftover lime launcher icon and splash with a vermilion sound-wave icon (adaptive, round, legacy densities and a monochrome themed icon), regenerated from one SVG; the PWA icons, favicon and share image use it too. `/downloads/index.html` is now a store-style listing built from eight real emulator screenshots (`mobile/store`, packaged by `scripts/package-android-release.mjs`), with what's new, data safety, app info and install steps; it shows no ratings or download counts. Same certificate (`acc829c5…cfa9`). Anonymous public downloads matched and 9 hosted checks passed. Local validation: 75 Node tests and 38 browser checks.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `sonora-android-arm64.apk` | `515f824e26f5a854424173bb6f538979de6190dde2238d119678e6caebf92c70` |
+| `sonora-android-arm32.apk` | `673edfc1e2f1818d159e0588cafa658539f8582345d9a4f7503400411a55903e` |
+| `sonora-android-source.zip` | `87db2c3f2e613a88821370b28ad9e9bf66f305261599d9c80e6e746f9770861c` |
+
+## Download page at the site root — 2026-10-28
+
+Published deployment `dpl_BQh7fLo723weFhycWRtrZtp3gxuV` (`https://sonora-music-5jzms29sv-meds-projects-9af78741.vercel.app`); the previous deployment `dpl_H4zcVE9qCQsHdFFQrXUSADhedA3v` is retained for rollback. No APK change (1.7.1, same files).
+
+`/`, `/download`, `/downloads` and `/android` now show the download listing (`beforeFiles` rewrites in `next.config.mjs`; the `/android` redirect was removed). The web player moved to `/app` (manifest `id`, `start_url` and `scope` are `/app`), and the service worker (cache `sonora-shell-v6`) now caches and serves only `/app` navigations. Root cause of the missing screenshots: the listing used relative `./store/` paths, which broke at `/downloads` without a trailing slash; all listing and download-start links are now absolute. Live checks confirmed every image loads at all five addresses; 15 hosted checks passed.

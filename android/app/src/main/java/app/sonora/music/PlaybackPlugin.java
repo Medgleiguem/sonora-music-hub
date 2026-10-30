@@ -110,7 +110,7 @@ public class PlaybackPlugin extends Plugin {
     }); }
     @PluginMethod public void stageChunk(PluginCall call) { command(call, service -> {
         PlaybackStore store = service.requireStore(); String uploadId = owned(call); String data = call.getString("data", "");
-        if (data.length() > ((PlaybackStore.CHUNK_BYTES + 2) / 3) * 4) throw new IllegalArgumentException("An audio chunk exceeds 256 KiB.");
+        if (data.length() > ((PlaybackStore.CHUNK_BYTES + 2) / 3) * 4) throw new IllegalArgumentException("An audio chunk exceeds 1 MiB.");
         copies.execute(() -> {
             try { store.chunk(uploadId, Base64.getDecoder().decode(data)); call.resolve(); }
             catch (Exception failed) { reject(call, failed); }

@@ -2,6 +2,20 @@ package app.sonora.music;
 import org.junit.Test;
 import static org.junit.Assert.*;
 public class PlaybackPolicyTest {
+    @Test public void refusedFastOrCachedStreamsGetOnlyOneCompatibilityRetry() {
+        assertTrue(PlaybackPolicy.refreshYoutube(false, "native", false, 403));
+        assertTrue(PlaybackPolicy.refreshYoutube(false, "visionos", false, 410));
+        assertTrue(PlaybackPolicy.refreshYoutube(true, "extractor", false, 403));
+        assertFalse(PlaybackPolicy.refreshYoutube(false, "extractor", false, 403));
+        assertFalse(PlaybackPolicy.refreshYoutube(true, "native", true, 403));
+        assertFalse(PlaybackPolicy.refreshYoutube(false, "native", false, 429));
+    }
+
+    @Test public void fallbackUsesOnlyTheRemainingSharedResolutionBudget() throws Exception {
+        assertEquals(42000, PlaybackPolicy.resolutionRemaining(60000, 18000));
+        assertThrows(java.io.IOException.class, () -> PlaybackPolicy.resolutionRemaining(60000, 60000));
+        assertThrows(java.io.IOException.class, () -> PlaybackPolicy.resolutionRemaining(60000, 61000));
+    }
     @Test public void acceptsOnlyHttpsJamendoStreamsWithoutCredentials() {
         assertTrue(PlaybackPolicy.jamendo("https://prod-1.storage.jamendo.com/?trackid=12"));
         assertFalse(PlaybackPolicy.jamendo("http://prod-1.storage.jamendo.com/a.mp3"));

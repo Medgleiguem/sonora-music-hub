@@ -2,6 +2,14 @@ package app.sonora.music;
 import java.net.URI;
 import java.util.Locale;
 final class PlaybackPolicy {
+    static boolean refreshYoutube(boolean cached, String resolver, boolean refreshing, int status) {
+        return !refreshing && (status == 403 || status == 410)
+            && (cached || "native".equals(resolver) || "visionos".equals(resolver));
+    }
+    static long resolutionRemaining(long deadline, long now) throws java.io.IOException {
+        if (now >= deadline) throw new java.io.IOException("The media request timed out. Check your connection and retry.");
+        return deadline - now;
+    }
     static boolean jamendo(String url) {
         try {
             URI uri = URI.create(url);

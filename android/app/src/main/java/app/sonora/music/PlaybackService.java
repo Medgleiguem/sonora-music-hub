@@ -28,6 +28,7 @@ public class PlaybackService extends MediaSessionService {
     private final Set<Observer> observers = new HashSet<>();
     private final ConcurrentHashMap<String, Entry> entries = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MediaProcess, Resolution> resolving = new ConcurrentHashMap<>();
+    private final ExecutorService prefetcher = Executors.newSingleThreadExecutor();
     private ExoPlayer player;
     private MediaSession session;
     private NativeMedia media;
@@ -66,7 +67,7 @@ public class PlaybackService extends MediaSessionService {
         player.setWakeMode(C.WAKE_MODE_NETWORK);
         player.addListener(new Player.Listener() {
             @Override public void onEvents(Player player, Player.Events events) { emit(); }
-            @Override public void onMediaItemTransition(@Nullable MediaItem item, int reason) { error = ""; emit(); }
+            @Override public void onMediaItemTransition(@Nullable MediaItem item, int reason) { error = ""; emit(); main.post(PlaybackService.this::prefetchNext); }
             @Override public void onPositionDiscontinuity(Player.PositionInfo oldPosition, Player.PositionInfo newPosition, int reason) {
                 if (oldPosition.mediaItemIndex != newPosition.mediaItemIndex) cancelExceptCurrent();
             }
@@ -116,6 +117,7 @@ public class PlaybackService extends MediaSessionService {
     @Override public void onDestroy() {
         main.removeCallbacksAndMessages(null);
         cancelAll();
+        prefetcher.shutdownNow();
         observers.clear();
         if (store != null) store.close();
         if (session != null) session.release();
@@ -270,25 +272,50 @@ public class PlaybackService extends MediaSessionService {
     private void cancelAll() { for (Map.Entry<MediaProcess, Resolution> job : resolving.entrySet()) cancel(job); }
     private void cancel(Map.Entry<MediaProcess, Resolution> job) { job.getValue().canceled = true; job.getKey().cancel("Playback changed."); }
 
+    /** Resolves the upcoming YouTube track while the current one plays, so skipping or advancing starts from the cache. */
+    private void prefetchNext() {
+        if (player == null) return;
+        int next = player.getNextMediaItemIndex();
+        Entry entry = next == C.INDEX_UNSET ? null : entry(player.getMediaItemAt(next));
+        if (entry == null || entry.youtube.isEmpty() || media.hasStream(entry.youtube)) return;
+        // Never compete with the track the listener is waiting for; its open() schedules this again.
+        Entry current = entry(player.getCurrentMediaItem());
+        for (Resolution job : resolving.values()) if (job.entry == entry || job.entry == current) return;
+        MediaProcess process = new MediaProcess();
+        resolving.put(process, new Resolution(entry));
+        prefetcher.execute(() -> {
+            // Failures are not cached; playback resolves again and reports its own error.
+            try { media.resolve(entry.youtube, process); } catch (Exception ignored) { }
+            finally { resolving.remove(process); }
+        });
+    }
+
     /** ExoPlayer calls open() on its loader thread, never on the main or WebView thread. */
     private final class QueueDataSource implements DataSource {
         private final List<TransferListener> listeners = new ArrayList<>();
         private DataSource delegate;
+        private boolean refreshing;
+        private boolean forceExtractor;
+        private long resolutionDeadline;
         @Override public void addTransferListener(TransferListener listener) { listeners.add(listener); if (delegate != null) delegate.addTransferListener(listener); }
         @Override public long open(DataSpec spec) throws IOException {
             Entry entry = entries.get(spec.uri.toString());
             if (entry == null) throw new IOException("This queue item has expired.");
             String url = entry.uri;
+            if (!refreshing) resolutionDeadline = SystemClock.elapsedRealtime() + 60_000;
+            boolean reused = !entry.youtube.isEmpty() && media.hasStream(entry.youtube);
+            String resolver = "extractor";
             Map<String, String> headers = new HashMap<>();
             if (!entry.youtube.isEmpty()) {
                 MediaProcess process = new MediaProcess();
                 Resolution resolution = new Resolution(entry);
                 resolving.put(process, resolution);
                 try {
-                    // Resolution only lasts for this open; expiring signed URLs never enter queue state.
-                    JSONObject result = media.resolve(entry.youtube, process);
+                    // Reuse only short-lived private resolutions; signed URLs never enter queue state.
+                    JSONObject result = forceExtractor ? media.resolveFallback(entry.youtube, process, resolutionDeadline) : media.resolve(entry.youtube, process);
                     if (resolution.canceled || entries.get(entry.token) != entry) throw new IOException("Playback changed.");
                     url = result.getString("url");
+                    resolver = result.optString("resolver", "extractor");
                     JSONObject raw = result.optJSONObject("headers");
                     if (raw != null) for (Iterator<String> keys = raw.keys(); keys.hasNext();) { String key = keys.next(); headers.put(key, raw.getString(key)); }
                 } catch (Exception failed) {
@@ -306,7 +333,21 @@ public class PlaybackService extends MediaSessionService {
             } else delegate = new DefaultHttpDataSource.Factory().setConnectTimeoutMs(15000).setReadTimeoutMs(20000)
                 .setAllowCrossProtocolRedirects(false).setDefaultRequestProperties(headers).createDataSource();
             for (TransferListener listener : listeners) delegate.addTransferListener(listener);
-            return delegate.open(spec.buildUpon().setUri(Uri.parse(url)).build());
+            try {
+                long length = delegate.open(spec.buildUpon().setUri(Uri.parse(url)).build());
+                main.post(PlaybackService.this::prefetchNext);
+                return length;
+            }
+            catch (HttpDataSource.InvalidResponseCodeException refused) {
+                if (!entry.youtube.isEmpty()) media.invalidateStream(entry.youtube);
+                if (!entry.youtube.isEmpty() && PlaybackPolicy.refreshYoutube(reused, resolver, refreshing, refused.responseCode)) {
+                    delegate.close(); delegate = null;
+                    refreshing = true;
+                    forceExtractor = true;
+                    try { return open(spec); } finally { refreshing = false; forceExtractor = false; }
+                }
+                throw refused;
+            }
         }
         @Override public int read(byte[] buffer, int offset, int length) throws IOException { if (delegate == null) throw new IOException("Audio is not open."); return delegate.read(buffer, offset, length); }
         @Override public Uri getUri() { return delegate == null ? null : delegate.getUri(); }

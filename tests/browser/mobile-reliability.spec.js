@@ -1,46 +1,42 @@
 import { test, expect } from '@playwright/test';
+import { chooseDownload, goToTab, openAllSongs, quietCatalog, seedTracks } from './ui.js';
 
 test.use({ viewport: { width: 412, height: 820 } });
+test.beforeEach(async ({ page }) => { await quietCatalog(page); });
 
-test('large libraries render in pages while search still finds every track', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByText('Opening your library…', { exact: true })).toBeHidden();
-  await page.evaluate(async () => {
-    const db = await new Promise((resolve, reject) => {
-      const request = indexedDB.open('sonora-music');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const transaction = db.transaction('tracks', 'readwrite');
-    for (let index = 0; index < 600; index++) transaction.objectStore('tracks').put({
-      id: `large-${index}`, title: `Library song ${index}`, artist: 'Library artist',
-      album: 'Collection', duration: 120, addedAt: index, source: 'local'
-    });
-    await new Promise((resolve, reject) => { transaction.oncomplete = resolve; transaction.onerror = () => reject(transaction.error); });
-    db.close();
-  });
-  await page.reload();
-  await page.getByRole('button', { name: 'Library', exact: true }).click();
-  await expect(page.locator('.track-row')).toHaveCount(60);
-  await page.getByRole('button', { name: /Show more tracks/ }).click();
-  await expect(page.locator('.track-row')).toHaveCount(120);
-  await page.getByRole('textbox', { name: 'Search music' }).fill('Library song 599');
+test('large libraries render in pages while filtering still finds every track', async ({ page }) => {
+  await page.goto('/app');
+  await seedTracks(page, Array.from({ length: 600 }, (_, index) => ({
+    id: `large-${index}`, title: `Library song ${index}`, artist: 'Library artist', album: 'Collection', duration: 120, addedAt: index, source: 'local'
+  })));
+  await openAllSongs(page);
+  await expect(page.locator('.track-row')).toHaveCount(100);
+  await page.getByRole('button', { name: 'Show more', exact: true }).click();
+  await expect(page.locator('.track-row')).toHaveCount(200);
+  await page.getByRole('textbox', { name: 'Find in this list' }).fill('Library song 599');
   await expect(page.locator('.track-row')).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Play Library song 599', exact: true })).toBeVisible();
 });
 
-test('closed phone navigation is excluded from keyboard and screen reader navigation', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Your library', exact: true })).toBeHidden();
-  await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Your library', exact: true })).toBeInViewport();
-  await page.getByRole('button', { name: 'Close navigation', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Your library', exact: true })).toBeHidden();
+test('the tab bar is the only navigation and marks the current tab', async ({ page }) => {
+  await page.goto('/app');
+  const tabs = page.getByRole('navigation', { name: 'Main' });
+  await expect(tabs.getByRole('button')).toHaveText(['Home', 'Search', 'Library']);
+  await expect(tabs.getByRole('button', { name: 'Home', exact: true })).toHaveAttribute('aria-current', 'page');
+  await goToTab(page, 'Library');
+  await expect(tabs.getByRole('button', { name: 'Library', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeInViewport();
+  for (const button of await tabs.getByRole('button').all()) {
+    const bounds = await button.boundingBox();
+    expect(bounds.height).toBeGreaterThanOrEqual(48);
+  }
 });
 
-test('phone download controls have usable touch targets and the dialog keeps its close control visible', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Download', exact: true }).click();
+test('the first download asks for consent in a sheet that keeps its close control visible', async ({ page }) => {
+  await page.goto('/app');
+  await goToTab(page, 'Search');
+  await page.getByRole('textbox', { name: 'Search music' }).fill('https://www.youtube.com/watch?v=jNQXAC9IVRw');
+  await chooseDownload(page);
   const dialog = page.getByRole('dialog');
   const close = dialog.getByRole('button', { name: 'Close', exact: true });
   const closeBounds = await close.boundingBox();
@@ -49,7 +45,7 @@ test('phone download controls have usable touch targets and the dialog keeps its
   await page.setViewportSize({ width: 320, height: 480 });
   const action = process.env.PLAYWRIGHT_HOSTED_ANDROID
     ? dialog.getByRole('link', { name: 'Get the Android app', exact: true })
-    : dialog.getByRole('button', { name: 'Convert and save to device', exact: true });
+    : dialog.getByRole('button', { name: 'Download', exact: true });
   await action.scrollIntoViewIfNeeded();
   await expect(close).toBeInViewport();
   await close.click();

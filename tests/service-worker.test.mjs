@@ -23,9 +23,9 @@ function worker() {
   };
 }
 
-test('installer pages and release downloads bypass the app-shell navigation cache', async () => {
+test('the download page and release files bypass the app-shell navigation cache', async () => {
   const handles = worker();
-  for (const path of ['/android', '/downloads/index.html', '/downloads/sonora-android.apk', '/downloads/checksums.json', '/downloads/sonora-android-source.zip']) {
+  for (const path of ['/', '/download', '/android', '/downloads', '/downloads/index.html', '/downloads/sonora-android.apk', '/downloads/checksums.json', '/downloads/sonora-android-source.zip']) {
     assert.equal(await handles(path), false, `${path} must not replace the cached app shell`);
   }
 });
@@ -37,6 +37,6 @@ test('analytics scripts bypass the offline asset cache', async () => {
 
 test('the music app still uses its navigation cache while APIs bypass it', async () => {
   const handles = worker();
-  assert.equal(await handles('/'), true);
+  assert.equal(await handles('/app'), true);
   assert.equal(await handles('/api/youtube/search'), false);
 });

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { chooseDownload, closeDialog, downloadPreferences, goToTab, openAllSongs, openDownloads, quietCatalog, searchFor } from './ui.js';
 
 // A real, generated 30-second PCM WAV keeps playback tests independent of media services.
 function wavFile(name = 'Regression tone.wav') {
@@ -36,14 +37,21 @@ function downloadEvents(title, { complete = true } = {}) {
   return events.map((event) => JSON.stringify(event)).join('\n') + '\n';
 }
 
-async function openDownload(page, url = 'https://www.youtube.com/watch?v=jNQXAC9IVRw') {
-  await page.getByRole('button', { name: 'Download audio', exact: true }).first().click();
-  await page.getByLabel('YouTube video or playlist URL').fill(url);
-  await page.getByRole('checkbox', { name: /I have the right/ }).check();
-  await page.getByRole('checkbox', { name: /Also keep a recovery copy/ }).uncheck();
+async function startDownload(page, url = 'https://www.youtube.com/watch?v=jNQXAC9IVRw') {
+  await searchFor(page, url);
+  await chooseDownload(page);
+}
+
+async function importWav(page, file = wavFile()) {
+  await page.getByRole('button', { name: 'Add music', exact: true }).first().click();
+  await page.getByRole('dialog').locator('input[type=file]').first().setInputFiles(file);
 }
 
 test.beforeEach(async ({ page }) => {
+  // Vercel provides this optional script; local production tests have no analytics endpoint.
+  await page.route('**/_vercel/insights/script.js', route => route.fulfill({ contentType: 'application/javascript', body: '' }));
+  await quietCatalog(page);
+  await downloadPreferences(page);
   // Observe real Audio objects without replacing their browser behavior.
   await page.addInitScript(() => {
     const OriginalAudio = window.Audio;
@@ -56,25 +64,26 @@ test.beforeEach(async ({ page }) => {
       },
     });
   });
-  await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Your library', exact: true })).toBeVisible();
+  await page.goto('/app');
+  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+  await expect(page.getByText('Opening your library…', { exact: true })).toBeHidden();
 });
 
-test('searching the library does not allocate more audio players', async ({ page }) => {
-  await page.getByRole('button', { name: 'Your library', exact: true }).click();
+test('searching does not allocate more audio players', async ({ page }) => {
+  await goToTab(page, 'Search');
   const countBefore = await page.evaluate(() => window.__testAudioElements.length);
-  await page.getByPlaceholder('Search your music…').pressSequentially('regression', { delay: 30 });
-  await expect(page.getByText('No matching music', { exact: true })).toBeVisible();
+  await page.getByRole('textbox', { name: 'Search music' }).pressSequentially('regression', { delay: 30 });
+  await expect(page.getByText('No songs found', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => window.__testAudioElements.length)).toBe(countBefore);
 });
 
 test('liking a playing local track preserves playback position and source', async ({ page }) => {
-  await page.getByRole('button', { name: 'Add music', exact: true }).first().click();
-  await page.getByRole('dialog').locator('input[type=file]').first().setInputFiles(wavFile());
+  await importWav(page);
   await expect(page.getByRole('dialog')).toBeHidden();
-  await page.getByRole('button', { name: 'Your library', exact: true }).click();
+  await openAllSongs(page);
   await page.getByRole('button', { name: 'Play Regression tone', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Open now playing: Regression tone', exact: true }).click();
   const position = page.getByRole('slider', { name: 'Track position', exact: true });
   await position.fill('10');
   await expect.poll(() => page.evaluate(() => window.__testAudioElements.find((audio) => audio.src)?.currentTime)).toBeGreaterThanOrEqual(9.9);
@@ -90,7 +99,7 @@ test('liking a playing local track preserves playback position and source', asyn
   expect(currentAudio.paused).toBe(false);
 });
 
-test('closing download progress keeps the task running until explicit cancellation', async ({ page }) => {
+test('closing the downloads panel keeps a download running until it is stopped', async ({ page }) => {
   let releaseDownload;
   const downloadGate = new Promise((resolve) => { releaseDownload = resolve; });
   await page.route('**/api/youtube/download', async (route) => {
@@ -102,29 +111,51 @@ test('closing download progress keeps the task running until explicit cancellati
     if (request.url().includes('/api/youtube/download')) failedDownloads.push(request.failure()?.errorText);
   });
   try {
-    await page.getByRole('button', { name: 'Download audio', exact: true }).first().click();
-    await page.getByLabel('YouTube video or playlist URL').fill('https://www.youtube.com/watch?v=jNQXAC9IVRw');
-    await page.getByRole('checkbox', { name: /I have the right/ }).check();
-    await page.getByRole('checkbox', { name: /Also keep a recovery copy/ }).uncheck();
     const requestStarted = page.waitForRequest('**/api/youtube/download');
-    await page.getByRole('button', { name: 'Convert and save to device', exact: true }).click();
+    await startDownload(page);
     await requestStarted;
-    await expect(page.getByRole('button', { name: 'Cancel download', exact: true })).toBeVisible();
-    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
-    await expect(page.getByRole('dialog')).toBeHidden();
-    await page.getByRole('button', { name: 'Download audio', exact: true }).first().click();
-    await expect(page.getByRole('button', { name: 'Cancel download', exact: true })).toBeVisible();
+    await openDownloads(page);
+    await closeDialog(page);
+    // The rest of the app stays usable while the download continues.
+    await goToTab(page, 'Library');
+    await page.getByRole('button', { name: /^Open downloads: / }).click();
     expect(failedDownloads).toEqual([]);
-    await page.getByRole('button', { name: 'Cancel download', exact: true }).click();
-    await expect(page.getByText('Download cancelled', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /^Stop / }).click();
+    await expect(page.getByText('Stopped', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Resume / })).toBeVisible();
   } finally {
     releaseDownload();
   }
 });
 
+test('two downloads run at the same time and each can be stopped on its own', async ({ page }) => {
+  const gates = new Map();
+  await page.route('**/api/youtube/download', async (route) => {
+    const id = new URL(route.request().postDataJSON().url).searchParams.get('v');
+    await new Promise((resolve) => gates.set(id, resolve));
+    await route.fulfill({ status: 200, contentType: 'application/x-ndjson', body: downloadEvents(`Song ${id}`) }).catch(() => {});
+  });
+  await startDownload(page, 'https://www.youtube.com/watch?v=jNQXAC9IVRw');
+  await page.getByRole('textbox', { name: 'Search music' }).fill('https://www.youtube.com/watch?v=M7lc1UVf-VE');
+  await chooseDownload(page);
+  await expect.poll(() => gates.size).toBe(2);
+  await openDownloads(page);
+  await expect(page.getByRole('button', { name: /^Stop / })).toHaveCount(2);
+  await page.getByRole('button', { name: /^Stop / }).first().click();
+  await expect(page.getByText('Stopped', { exact: true })).toBeVisible();
+  gates.get('jNQXAC9IVRw')();
+  await expect(page.getByText('Download complete', { exact: true })).toBeVisible();
+  gates.get('M7lc1UVf-VE')();
+  const titles = await page.evaluate(async () => {
+    const db = await new Promise(resolve => { const r = indexedDB.open('sonora-music'); r.onsuccess = () => resolve(r.result); });
+    const rows = await new Promise(resolve => { const r = db.transaction('tracks').objectStore('tracks').getAll(); r.onsuccess = () => resolve(r.result); });
+    db.close(); return rows.map(row => row.title);
+  });
+  expect(titles).toEqual(['Song jNQXAC9IVRw']);
+});
+
 test('an invalid audio file cannot leave the import dialog stuck', async ({ page }) => {
-  await page.getByRole('button', { name: 'Add music', exact: true }).first().click();
-  await page.getByRole('dialog').locator('input[type=file]').first().setInputFiles({
+  await importWav(page, {
     name: 'Broken metadata.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('ID3\u0004\u0000\u0000\u007f\u007f\u007f\u007f'),
   });
   await expect(page.getByText('Reading your music…', { exact: true })).toBeHidden({ timeout: 15_000 });
@@ -132,41 +163,45 @@ test('an invalid audio file cannot leave the import dialog stuck', async ({ page
     await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
   }
   await expect(page.getByRole('dialog')).toBeHidden();
-  await page.getByRole('button', { name: 'Your library', exact: true }).click();
-  await expect(page.getByPlaceholder('Search your music…')).toBeEditable();
+  await goToTab(page, 'Library');
+  await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible();
 });
 
 
 test('a complete streamed download is playable and persists in the library', async ({ page }) => {
   await page.route('**/api/youtube/download', async (route) => {
     expect(route.request().method()).toBe('POST');
-    expect(route.request().postDataJSON()).toEqual({ url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw', format: 'mp3' });
+    expect(route.request().postDataJSON()).toEqual({ url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw', format: 'm4a' });
     await route.fulfill({ status: 200, contentType: 'application/x-ndjson', body: downloadEvents('Downloaded regression') });
   });
-  await openDownload(page);
-  await page.getByRole('button', { name: 'Convert and save to device', exact: true }).click();
+  await startDownload(page);
+  await openDownloads(page);
   await expect(page.getByText('Download complete', { exact: true })).toBeVisible();
-  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
+  await closeDialog(page);
   await page.reload();
-  await page.getByRole('button', { name: 'Your library', exact: true }).click();
+  await openAllSongs(page);
   await page.getByRole('button', { name: 'Play Downloaded regression', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__testAudioElements.find((audio) => audio.src)?.currentTime)).toBeGreaterThan(0);
 });
 
-test('an interrupted download never stores an incomplete track', async ({ page }) => {
+test('an interrupted download is retried and never stores an incomplete track', async ({ page }) => {
+  test.setTimeout(60_000);
+  let attempts = 0;
+  page.on('request', (request) => { if (request.url().endsWith('/api/youtube/download')) attempts++; });
   await page.route('**/api/youtube/download', (route) => route.fulfill({
     status: 200, contentType: 'application/x-ndjson', body: downloadEvents('Incomplete regression', { complete: false }),
   }));
-  await openDownload(page);
-  await page.getByRole('button', { name: 'Convert and save to device', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Cancel download', exact: true })).toBeHidden();
-  await expect(page.getByRole('dialog').locator('.download-progress-card')).toHaveClass(/error|partial/);
+  await startDownload(page);
+  await openDownloads(page);
+  await expect(page.getByRole('button', { name: /^Stop / })).toBeHidden({ timeout: 45_000 });
+  expect(attempts).toBeGreaterThan(1);
+  await expect(page.getByRole('dialog').locator('.download-job')).toHaveClass(/error|partial/);
   await expect(page.getByText('Download complete', { exact: true })).toBeHidden();
-  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
+  await closeDialog(page);
   await page.reload();
-  await page.getByRole('button', { name: 'Your library', exact: true }).click();
-  await expect(page.getByText('No music yet', { exact: true })).toBeVisible();
+  await goToTab(page, 'Library');
+  await expect(page.getByText('Your library is empty', { exact: true })).toBeVisible();
 });
 
 test('cancelling a playlist preserves tracks already saved inside its playlist', async ({ page }) => {
@@ -183,15 +218,16 @@ test('cancelling a playlist preserves tracks already saved inside its playlist',
     await route.fulfill({ status: 200, contentType: 'application/x-ndjson', body: downloadEvents(first ? 'Playlist first' : 'Playlist second') }).catch(() => {});
   });
   try {
-    await openDownload(page, 'https://www.youtube.com/playlist?list=PLregression123');
     const secondStarted = page.waitForRequest((request) => request.url().endsWith('/api/youtube/download') && request.postDataJSON()?.url.includes(entries[1].externalId));
-    await page.getByRole('button', { name: 'Download playlist', exact: true }).click();
+    await startDownload(page, 'https://www.youtube.com/playlist?list=PLregression123');
     await secondStarted;
-    await page.getByRole('button', { name: 'Cancel download', exact: true }).click();
-    await expect(page.getByText('Download cancelled', { exact: true })).toBeVisible();
-    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
+    await openDownloads(page);
+    await page.getByRole('button', { name: /^Stop / }).click();
+    await expect(page.getByText('Stopped', { exact: true })).toBeVisible();
+    await closeDialog(page);
     await page.reload();
-    await page.getByRole('button', { name: 'Saved before cancellation', exact: true }).click();
+    await goToTab(page, 'Library');
+    await page.getByRole('button', { name: 'Open playlist Saved before cancellation', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Play Playlist first', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Play Playlist second', exact: true })).toBeHidden();
   } finally {
@@ -200,10 +236,7 @@ test('cancelling a playlist preserves tracks already saved inside its playlist',
 });
 
 test('a cancellation from the native downloader stops the whole playlist', async ({ page }) => {
-  const entries = [
-    { title: 'First', externalId: 'jNQXAC9IVRw', shareUrl: 'https://youtu.be/jNQXAC9IVRw' },
-    { title: 'Second', externalId: 'M7lc1UVf-VE', shareUrl: 'https://youtu.be/M7lc1UVf-VE' },
-  ];
+  const entries = ['jNQXAC9IVRw', 'M7lc1UVf-VE', 'dQw4w9WgXcQ', '9bZkp7q19f0'].map((id, index) => ({ title: `Song ${index + 1}`, externalId: id, shareUrl: `https://youtu.be/${id}` }));
   await page.route('**/api/youtube/playlist?**', route => route.fulfill({ json: { title: 'Cancellation', entries } }));
   await page.evaluate(() => {
     const fetch = window.fetch;
@@ -216,14 +249,15 @@ test('a cancellation from the native downloader stops the whole playlist', async
       return fetch(...args);
     };
   });
-  await openDownload(page, 'https://www.youtube.com/playlist?list=PLregression123');
-  await page.getByRole('button', { name: 'Download playlist', exact: true }).click();
-  await expect(page.getByText('Download cancelled', { exact: true })).toBeVisible();
-  expect(await page.evaluate(() => window.__downloadAttempts)).toBe(1);
+  await startDownload(page, 'https://www.youtube.com/playlist?list=PLregression123');
+  await openDownloads(page);
+  await expect(page.getByText('Stopped', { exact: true })).toBeVisible();
+  // Only the songs already running together were attempted; nothing after the cancellation started.
+  expect(await page.evaluate(() => window.__downloadAttempts)).toBeLessThanOrEqual(2);
 });
 
 for (const width of [320, 768, 1440]) {
-  test(`home and download dialog fit a ${width}px viewport without browser errors`, async ({ page }, testInfo) => {
+  test(`home and a bottom sheet fit a ${width}px viewport without browser errors`, async ({ page }, testInfo) => {
     const browserErrors = [];
     page.on('pageerror', (error) => browserErrors.push(error.message));
     page.on('console', (message) => {
@@ -231,21 +265,18 @@ for (const width of [320, 768, 1440]) {
     });
     await page.setViewportSize({ width, height: 900 });
     await page.reload();
-    await expect(page.getByRole('button', { name: 'Choose music', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search music', exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`), fullPage: true, animations: 'disabled' });
-    if (width < 900) {
-      await page.getByRole('button', { name: 'Download', exact: true }).click();
-    } else {
-      await page.getByRole('button', { name: 'Download audio', exact: true }).first().click();
-    }
+    await goToTab(page, 'Library');
+    await page.getByRole('button', { name: 'Create or add', exact: true }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     const bounds = await dialog.boundingBox();
     expect(bounds.x).toBeGreaterThanOrEqual(0);
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
     await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport();
-    await page.screenshot({ path: testInfo.outputPath(`download-${width}.png`), fullPage: true, animations: 'disabled' });
+    await page.screenshot({ path: testInfo.outputPath(`sheet-${width}.png`), fullPage: true, animations: 'disabled' });
     expect(browserErrors).toEqual([]);
   });
 }
@@ -264,8 +295,8 @@ test('storage opening failures show retry and recover without a blank screen', a
   await page.evaluate(() => { window.__blockStorage = false; });
   await page.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(page.getByText(/Your device library could not be opened/)).toBeHidden();
-  await page.getByRole('button', { name: 'Your library', exact: true }).click();
-  await expect(page.getByText('No music yet', { exact: true })).toBeVisible();
+  await goToTab(page, 'Library');
+  await expect(page.getByText('Your library is empty', { exact: true })).toBeVisible();
 });
 
 test('a full device does not leave imports stuck', async ({ page }) => {
@@ -277,26 +308,25 @@ test('a full device does not leave imports stuck', async ({ page }) => {
     };
   });
   await page.reload();
-  await page.getByRole('button', { name: 'Add music', exact: true }).first().click();
-  await page.getByRole('dialog').locator('input[type=file]').first().setInputFiles(wavFile());
+  await importWav(page);
   await expect(page.getByRole('dialog')).toBeHidden();
-  await page.getByRole('button', { name: 'Your library', exact: true }).click();
-  await expect(page.getByText('No music yet', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Add music', exact: true }).first().click();
+  await goToTab(page, 'Library');
+  await expect(page.getByText('Your library is empty', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Create or add', exact: true }).click();
+  await page.getByRole('button', { name: /^Add music from this device/ }).click();
   await expect(page.getByRole('dialog').getByRole('button', { name: /Choose audio files/ })).toBeEnabled();
 });
 
 if (process.env.PLAYWRIGHT_PRODUCTION) {
   test('the first offline reopen loads the app and plays imported audio', async ({ page, context }) => {
-    await page.getByRole('button', { name: 'Add music', exact: true }).first().click();
-    await page.getByRole('dialog').locator('input[type=file]').first().setInputFiles(wavFile());
+    await importWav(page);
     await expect(page.getByRole('dialog')).toBeHidden();
     await page.evaluate(async () => { await navigator.serviceWorker.ready; });
     await context.setOffline(true);
     await page.reload();
     // Chrome's network emulation can leave navigator.onLine true; prove connectivity is unavailable.
     expect(await page.evaluate(() => fetch('/api/offline-probe').then(() => true).catch(() => false))).toBe(false);
-    await page.getByRole('button', { name: 'Your library', exact: true }).click();
+    await openAllSongs(page);
     await page.getByRole('button', { name: 'Play Regression tone', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.__testAudioElements.find((audio) => audio.src)?.currentTime)).toBeGreaterThan(0);

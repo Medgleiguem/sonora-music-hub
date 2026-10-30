@@ -1,13 +1,21 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { MAX_AUDIO_BYTES, youtubeSource, audioFormat } from '../lib/youtube-input.mjs';
+import { searchType, playlistStart } from '../lib/youtube-catalog.mjs';
+import { spotifySource, spotifyCollection } from '../lib/spotify-catalog.mjs';
 
 const media = registerPlugin('SonoraMedia');
 export const isNativeAndroid = () => Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
 export const minimizeAndroid = () => media.minimize();
+// Full screen hides Android's status and navigation bars; a swipe from the edge shows them briefly.
+export const fullscreenAndroid = () => media.fullscreen().then(result => result.enabled !== false).catch(() => true);
+export const setFullscreenAndroid = (enabled) => media.setFullscreen({ enabled });
 export const onNativeDownloadCancelled = (callback) => media.addListener('downloadCancelled', callback);
 export const pendingNativeDownload = () => media.pendingDownload();
 export const releaseNativeDownload = (id) => media.release({ id });
 export const cancelKeptNativeDownload = (id) => media.cancel({ id });
+// Keeps Android's download service running for a whole download; a refused start is retried when the app is visible.
+export const holdNativeDownloads = (id) => media.hold({ id });
+export const unholdNativeDownloads = (id) => media.unhold({ id }).catch(() => {});
 
 async function waitForForeground(signal, onProgress) {
   let resume;
@@ -61,11 +69,16 @@ async function operation(method, options, signal, onProgress) {
 export async function youtubeRequest(path, options = {}) {
   if (!isNativeAndroid()) return fetch(path, options);
   const url = new URL(path, 'https://localhost');
+  if (url.pathname === '/api/spotify/lookup') {
+    const source = spotifySource(url.searchParams.get('url') || '');
+    const result = await operation('spotify', { kind: source.kind, spotifyId: source.id }, options.signal || AbortSignal.timeout(30_000));
+    return Response.json(spotifyCollection(result.data, source));
+  }
   const playlist = url.pathname === '/api/youtube/playlist';
   if (!playlist && url.pathname !== '/api/youtube/search') throw new Error('Unknown music request.');
   const result = await operation(playlist ? 'playlist' : 'search', playlist
-    ? { url: youtubeSource(url.searchParams.get('url'), true) }
-    : { query: url.searchParams.get('q') || '' }, options.signal || AbortSignal.timeout(55_000));
+    ? { url: youtubeSource(url.searchParams.get('url'), true), start: playlistStart(url.searchParams.get('start')) }
+    : { query: url.searchParams.get('q') || '', type: searchType(url.searchParams.get('type')) }, options.signal || AbortSignal.timeout(55_000));
   return Response.json(result);
 }
 
@@ -73,10 +86,19 @@ export async function nativeAudio(source, format, signal, onProgress) {
   signal.throwIfAborted();
   const url = youtubeSource(source);
   const pending = await media.pendingDownload();
-  const job = pending.job;
-  const id = job && !job.cancelled && job.url === url && job.format === format ? job.id : undefined;
-  if (!id) await waitForForeground(signal, onProgress);
-  const result = await operation('download', { url, format: audioFormat(format), ...(id ? { id } : {}) }, signal, onProgress);
+  const jobs = pending.jobs || (pending.job ? [pending.job] : []);
+  // Reattach to a song that kept downloading while Sonora was closed or reloaded.
+  const id = jobs.find(job => !job.cancelled && job.url === url && job.format === format)?.id;
+  // A running download service accepts more songs from the background; starting it needs Sonora visible.
+  if (!id && !pending.running) await waitForForeground(signal, onProgress);
+  const start = () => operation('download', { url, format: audioFormat(format), ...(id ? { id } : {}) }, signal, onProgress);
+  let result;
+  try { result = await start(); }
+  catch (error) {
+    if (error.code !== 'BACKGROUND_START') throw error;
+    await waitForForeground(signal, onProgress);
+    result = await start();
+  }
   const release = () => media.release({ id: result.id }).catch(() => {});
   try {
     if (!Number.isSafeInteger(result.size) || result.size <= 0 || result.size > MAX_AUDIO_BYTES) throw new Error('The audio file is empty or too large.');

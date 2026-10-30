@@ -51,3 +51,22 @@ test('an early manual download cancels the pending automatic download', async ({
   const duplicate = await page.waitForEvent('download', { timeout: 1500 }).then(() => true, () => false);
   expect(duplicate).toBe(false);
 });
+
+for (const path of ['/', '/download', '/downloads', '/android', '/downloads/index.html']) {
+  test(`the download page at ${path} shows its icon and every screenshot`, async ({ page }) => {
+    await page.goto(path);
+    await expect(page.getByRole('heading', { name: 'Sonora', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Download for 64-bit Android', exact: true })).toBeVisible();
+    const images = page.locator('header img, main img');
+    for (const image of await images.all()) {
+      await image.scrollIntoViewIfNeeded().catch(() => {});
+      await expect.poll(() => image.evaluate(element => element.complete && element.naturalWidth > 0), { message: await image.getAttribute('src') }).toBe(true);
+    }
+    expect(await images.count()).toBeGreaterThanOrEqual(10);
+  });
+}
+
+test('the web player opens at /app', async ({ page }) => {
+  await page.goto('/app');
+  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+});

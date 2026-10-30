@@ -1,4 +1,5 @@
-const CHUNK_BYTES = 256 * 1024;
+// Matches PlaybackStore.CHUNK_BYTES; fewer, larger pieces start downloaded songs sooner.
+const CHUNK_BYTES = 1024 * 1024;
 const MAX_STAGED_BYTES = 256 * 1024 * 1024;
 
 function base64(bytes) {
