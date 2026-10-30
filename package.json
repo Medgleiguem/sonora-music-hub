@@ -28,7 +28,7 @@
     "idb": "^8.0.3",
     "jsmediatags": "^3.9.7",
     "lucide-react": "^0.468.0",
-    "next": "16.4.1",
+    "next": "16.4.3",
     "postcss": "8.5.28",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
